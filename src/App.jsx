@@ -1,4 +1,7 @@
 
+// VERSION 3 - CLEAN BUILD FILE
+// If you still see old error, Vercel is building wrong branch/repo
+
 import { useEffect, useState } from "react";
 
 const API_KEY = "4a142ac699050dd6b595b88cb90da432";
@@ -8,54 +11,32 @@ export default function App() {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    fetch(
-      `https://gnews.io/api/v4/top-headlines?country=in&apikey=${API_KEY}`
-    )
-      .then((res) => res.json())
-      .then((data) => setNews(data.articles || []));
+    fetch("https://gnews.io/api/v4/top-headlines?country=in&apikey=" + API_KEY)
+      .then(res => res.json())
+      .then(data => {
+        if (data.articles) setNews(data.articles);
+      })
+      .catch(err => console.log(err));
   }, []);
 
-  const next = () => {
-    if (index < news.length - 1) setIndex(index + 1);
-  };
-
-  const prev = () => {
-    if (index > 0) setIndex(index - 1);
-  };
-
-  if (!news.length)
-    return (
-      <div style={ color: "white", textAlign: "center", marginTop: "50%" }>
-        Loading News...
-      </div>
-    );
+  if (news.length === 0) {
+    return <div>VERSION 3 LOADING...</div>;
+  }
 
   const article = news[index];
 
   return (
-    <div
-      onClick={next}
-      style={
-        height: "100vh",
-        backgroundImage: `url(${article.image})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "flex-end",
-        padding: "20px",
-        color: "white",
-        backgroundColor: "black"
-      }
-    >
-      <div style={ background: "rgba(0,0,0,0.6)", padding: "15px", borderRadius: "10px" }>
-        <h2>{article.title}</h2>
-        <p>{article.description?.slice(0, 180)}...</p>
-        <div style={ display: "flex", justifyContent: "space-between", marginTop: "10px" }>
-          <button onClick={(e) => { e.stopPropagation(); prev(); }}>⬆ Prev</button>
-          <button onClick={(e) => { e.stopPropagation(); next(); }}>⬇ Next</button>
-        </div>
-      </div>
+    <div>
+      <h2>{article.title}</h2>
+      <p>{article.description}</p>
+
+      <button onClick={() => index > 0 && setIndex(index - 1)}>
+        Prev
+      </button>
+
+      <button onClick={() => index < news.length - 1 && setIndex(index + 1)}>
+        Next
+      </button>
     </div>
   );
 }
