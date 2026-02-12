@@ -8,9 +8,16 @@ export default function App() {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    fetch(`https://gnews.io/api/v4/top-headlines?country=in&apikey=${API_KEY}`)
+    const url =
+      "https://gnews.io/api/v4/top-headlines?country=in&apikey=" + API_KEY;
+
+    fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url))
       .then((res) => res.json())
-      .then((data) => setNews(data.articles || []));
+      .then((data) => {
+        const parsed = JSON.parse(data.contents);
+        setNews(parsed.articles || []);
+      })
+      .catch((err) => console.log(err));
   }, []);
 
   const next = () => {
@@ -23,7 +30,7 @@ export default function App() {
 
   if (news.length === 0) {
     return (
-      <div style={{ color: "white", textAlign: "center", marginTop: "50%" }}>
+      <div style={{ textAlign: "center", marginTop: "50px" }}>
         Loading News...
       </div>
     );
