@@ -9,7 +9,7 @@ export default function App() {
 
   useEffect(() => {
     const url =
-      "https://gnews.io/api/v4/top-headlines?country=in&apikey=" + API_KEY;
+      "https://gnews.io/api/v4/top-headlines?country=in&lang=en&max=50&apikey=" + API_KEY;
 
     fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url))
       .then((res) => res.json())
@@ -31,7 +31,7 @@ export default function App() {
   if (news.length === 0) {
     return (
       <div style={{ textAlign: "center", marginTop: "50px" }}>
-        Loading News...
+        Loading English News...
       </div>
     );
   }
