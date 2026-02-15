@@ -63,45 +63,39 @@ export default function App() {
       onTouchEnd={handleTouchEnd}
       style={{
         height: "100vh",
-        width: "100%",
-        backgroundImage: `url(${article.image || ""})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        position: "relative",
-        overflow: "hidden",
+        flexDirection: "column",
+        backgroundColor: "#f5f5f5",
         fontFamily: "Arial, sans-serif"
       }}
     >
-      {/* Dark Overlay */}
+      {/* Image Top */}
       <div
         style={{
-          position: "absolute",
-          inset: 0,
-          background: "rgba(0,0,0,0.65)"
+          height: "40%",
+          backgroundImage: `url(${article.image})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center"
         }}
       />
 
-      {/* Content Card */}
+      {/* Content Bottom */}
       <div
         style={{
-          position: "relative",
-          width: "90%",
-          maxWidth: "600px",
-          background: "rgba(0,0,0,0.75)",
-          padding: "25px",
-          borderRadius: "15px",
-          color: "white",
-          boxShadow: "0 8px 20px rgba(0,0,0,0.4)"
+          flex: 1,
+          padding: "20px",
+          backgroundColor: "white",
+          borderTopLeftRadius: "20px",
+          borderTopRightRadius: "20px",
+          marginTop: "-20px",
+          boxShadow: "0 -5px 15px rgba(0,0,0,0.1)"
         }}
       >
-        <h2 style={{ fontSize: "22px", marginBottom: "15px" }}>
+        <h2 style={{ fontSize: "20px", marginBottom: "15px" }}>
           {article.title}
         </h2>
 
-        <p style={{ fontSize: "16px", lineHeight: "1.6" }}>
+        <p style={{ fontSize: "15px", lineHeight: "1.6" }}>
           {limitTo100Words(article.description)}
         </p>
 
@@ -109,7 +103,7 @@ export default function App() {
           style={{
             marginTop: "15px",
             fontSize: "13px",
-            opacity: 0.8
+            color: "gray"
           }}
         >
           {article.source?.name || "Source"} •{" "}
