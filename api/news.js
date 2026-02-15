@@ -25,15 +25,19 @@ export default async function handler(req, res) {
 
         const mediaMatch = item.match(/<media:content.*?url="(.*?)"/);
         const enclosureMatch = item.match(/<enclosure.*?url="(.*?)"/);
-
-        // Extract image from <img> inside description
         const imgMatch = descriptionRaw?.match(/<img.*?src="(.*?)"/);
 
-        const image =
+        let image =
           mediaMatch?.[1] ||
           enclosureMatch?.[1] ||
           imgMatch?.[1] ||
           null;
+
+        // If no image → generate from keyword
+        if (!image && title) {
+          const keyword = title.split(" ")[0];
+          image = `https://source.unsplash.com/800x600/?${encodeURIComponent(keyword)}`;
+        }
 
         const cleanDescription = descriptionRaw
           ?.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1")
