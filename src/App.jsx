@@ -4,8 +4,9 @@ import React, { useEffect, useState, useRef } from "react";
 export default function App() {
   const [news, setNews] = useState([]);
   const [index, setIndex] = useState(0);
-  const touchStartX = useRef(0);
-  const touchEndX = useRef(0);
+
+  const startX = useRef(0);
+  const startTime = useRef(0);
 
   useEffect(() => {
     fetch("/api/news")
@@ -29,23 +30,21 @@ export default function App() {
     }
   };
 
-  // Swipe only (no tap change)
   const handleTouchStart = (e) => {
-    touchStartX.current = e.touches[0].clientX;
+    startX.current = e.touches[0].clientX;
+    startTime.current = Date.now();
   };
 
-  const handleTouchMove = (e) => {
-    touchEndX.current = e.touches[0].clientX;
-  };
+  const handleTouchEnd = (e) => {
+    const endX = e.changedTouches[0].clientX;
+    const distance = startX.current - endX;
+    const timeTaken = Date.now() - startTime.current;
 
-  const handleTouchEnd = () => {
-    const distance = touchStartX.current - touchEndX.current;
-
-    // Ignore small touches (tap)
-    if (Math.abs(distance) < 60) return;
-
-    if (distance > 60) next();     // Swipe left
-    if (distance < -60) prev();    // Swipe right
+    // Strict swipe detection
+    if (Math.abs(distance) > 80 && timeTaken < 800) {
+      if (distance > 0) next();   // Swipe Left
+      else prev();                // Swipe Right
+    }
   };
 
   if (!news.length) {
@@ -66,8 +65,8 @@ export default function App() {
   return (
     <div
       onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onClick={(e) => e.stopPropagation()}  // Hard block tap
       style={{
         fontFamily: "Arial",
         background: "#f5f5f5",
