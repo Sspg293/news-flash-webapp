@@ -1,77 +1,56 @@
 
-export default async function handler(req, res) {
+let cache = {
+  data: null,
+  time: 0
+};
 
-  // Vercel-safe limited RSS list (fast + reliable)
+export default async function handler(req, res) {
+  const now = Date.now();
+
+  // Serve cached data for 5 minutes
+  if (cache.data && now - cache.time < 5 * 60 * 1000) {
+    return res.status(200).json({ articles: cache.data });
+  }
+
   const rssFeeds = [
     "https://feeds.bbci.co.uk/news/rss.xml",
     "https://www.hindustantimes.com/feeds/rss/topnews/rssfeed.xml",
     "https://indianexpress.com/section/india/feed/",
-    "https://www.thehindu.com/news/national/feeder/default.rss",
     "https://techcrunch.com/feed/",
-    "https://www.theverge.com/rss/index.xml",
-    "https://www.moneycontrol.com/rss/business.xml",
-    "https://cointelegraph.com/rss",
-    "https://www.espn.com/espn/rss/news",
-    "https://www.aljazeera.com/xml/rss/all.xml"
+    "https://www.theverge.com/rss/index.xml"
   ];
 
   try {
-    res.setHeader("Cache-Control", "no-store");
-
-    // Fetch feeds in parallel (Vercel optimized)
-    const feedResponses = await Promise.all(
-      rssFeeds.map(feed =>
-        fetch(feed)
-          .then(res => res.text())
-          .catch(() => null)
-      )
-    );
-
     let combined = [];
 
-    feedResponses.forEach(xml => {
-      if (!xml) return;
+    for (const feed of rssFeeds) {
+      try {
+        const response = await fetch(feed);
+        const xml = await response.text();
 
-      const items = xml.split("<item>").slice(1, 100);
+        const items = xml.split("<item>").slice(1, 50);
 
-      items.forEach(item => {
-        const rawTitle = item.split("<title>")[1]?.split("</title>")[0];
-        let rawLink = item.split("<link>")[1]?.split("</link>")[0];
-        const descriptionRaw =
-          item.split("<description>")[1]?.split("</description>")[0];
+        items.forEach(item => {
+          const title = item.split("<title>")[1]?.split("</title>")[0];
+          const link = item.split("<link>")[1]?.split("</link>")[0];
+          const mediaMatch = item.match(/<media:content.*?url="(.*?)"/);
+          const enclosureMatch = item.match(/<enclosure.*?url="(.*?)"/);
 
-        if (!rawTitle || !rawLink) return;
+          const image = mediaMatch?.[1] || enclosureMatch?.[1];
 
-        const title = rawTitle.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1");
-
-        rawLink = rawLink.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1");
-        rawLink = rawLink.replace(/&amp;/g, "&").trim();
-
-        if (!rawLink.startsWith("http")) return;
-
-        const mediaMatch = item.match(/<media:content.*?url="(.*?)"/);
-        const enclosureMatch = item.match(/<enclosure.*?url="(.*?)"/);
-        const imgMatch = descriptionRaw?.match(/<img.*?src="(.*?)"/);
-
-        const extractedImage =
-          mediaMatch?.[1] ||
-          enclosureMatch?.[1] ||
-          imgMatch?.[1];
-
-        if (!extractedImage) return;
-
-        const cleanDescription = descriptionRaw
-          ?.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1")
-          ?.replace(/<[^>]*>/g, "");
-
-        combined.push({
-          title,
-          description: cleanDescription,
-          url: rawLink,
-          image: extractedImage
+          if (title && link && image) {
+            combined.push({
+              title: title.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1"),
+              description: "",
+              url: link.trim(),
+              image
+            });
+          }
         });
-      });
-    });
+      } catch (err) {
+        console.log("Feed failed:", feed);
+      }
+    }
 
     // Remove duplicates
     const unique = Array.from(
@@ -83,6 +62,9 @@ export default async function handler(req, res) {
       const j = Math.floor(Math.random() * (i + 1));
       [unique[i], unique[j]] = [unique[j], unique[i]];
     }
+
+    // Save cache
+    cache = { data: unique, time: now };
 
     return res.status(200).json({ articles: unique });
 
