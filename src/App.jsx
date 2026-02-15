@@ -32,7 +32,8 @@ export default function App() {
       .trim();
   };
 
-  const summarizeTo100Words = (text) => {
+  // Sentence-based smart summary (~45 words)
+  const smartSummary = (text) => {
     if (!text) return "";
 
     const decoded = decodeHTML(text);
@@ -43,10 +44,25 @@ export default function App() {
       .replace(/\s+/g, " ")
       .trim();
 
-    const words = clean.split(" ");
-    if (words.length <= 100) return clean;
+    const sentences = clean.split(/(?<=[.!?])\s+/);
 
-    return words.slice(0, 100).join(" ") + "...";
+    let result = "";
+    let wordCount = 0;
+
+    for (let sentence of sentences) {
+      const words = sentence.split(" ");
+      if (wordCount + words.length > 45) break;
+
+      result += sentence + " ";
+      wordCount += words.length;
+    }
+
+    if (!result) {
+      const fallback = clean.split(" ").slice(0, 45).join(" ");
+      return fallback + "...";
+    }
+
+    return result.trim();
   };
 
   const next = () => {
@@ -89,7 +105,7 @@ export default function App() {
 
   const article = news[index];
 
-  const summaryText = summarizeTo100Words(
+  const summaryText = smartSummary(
     article.description || article.content || article.title
   );
 
