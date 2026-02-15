@@ -22,46 +22,31 @@ export default function App() {
     return txt.value;
   };
 
-  const cleanHeadline = (text) => {
-    if (!text) return "";
-    return text
-      .replace(/^Breaking:\s*/i, "")
-      .replace(/^Watch:\s*/i, "")
-      .replace(/^Explained:\s*/i, "")
-      .replace(/^Live:\s*/i, "")
-      .trim();
-  };
-
-  // Smart summary (~45 words) WITHOUT counting headline
-  const smartSummary = (text) => {
-    if (!text) return "";
-
-    const decoded = decodeHTML(text);
-
-    const clean = decoded
+  const cleanText = (text) => {
+    return decodeHTML(text)
       .replace(/<[^>]*>/g, "")
       .replace(/&nbsp;/g, " ")
       .replace(/\s+/g, " ")
       .trim();
+  };
 
-    const sentences = clean.split(/(?<=[.!?])\s+/);
+  // 50-word summary ALWAYS guaranteed
+  const summarize50 = (article) => {
+    const baseText =
+      article.description ||
+      article.content ||
+      article.title ||
+      "";
 
-    let result = "";
-    let wordCount = 0;
+    const clean = cleanText(baseText);
 
-    for (let sentence of sentences) {
-      const words = sentence.split(" ");
-      if (wordCount + words.length > 45) break;
+    if (!clean) return cleanText(article.title);
 
-      result += sentence + " ";
-      wordCount += words.length;
-    }
+    const words = clean.split(" ");
 
-    if (!result) {
-      return clean.split(" ").slice(0, 45).join(" ") + "...";
-    }
+    if (words.length <= 50) return clean;
 
-    return result.trim();
+    return words.slice(0, 50).join(" ") + "...";
   };
 
   const next = () => {
@@ -103,11 +88,6 @@ export default function App() {
   }
 
   const article = news[index];
-
-  // IMPORTANT: Only use description/content for summary (not title)
-  const summaryText = smartSummary(
-    article.description || article.content || ""
-  );
 
   return (
     <div
@@ -151,11 +131,11 @@ export default function App() {
         minHeight: "40vh"
       }}>
         <h2 style={{ marginBottom: "10px" }}>
-          {cleanHeadline(decodeHTML(article.title))}
+          {cleanText(article.title)}
         </h2>
 
         <p style={{ lineHeight: "1.6", color: "#444" }}>
-          {summaryText}
+          {summarize50(article)}
         </p>
 
         <a
