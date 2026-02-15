@@ -1,103 +1,91 @@
 
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 
 export default function App() {
   const [news, setNews] = useState([]);
   const [index, setIndex] = useState(0);
-  const touchStartY = useRef(0);
 
   useEffect(() => {
     fetch("/api/news")
       .then(res => res.json())
-      .then(data => setNews(data.articles || []))
-      .catch(err => console.log(err));
+      .then(data => {
+        if (data.articles) {
+          setNews(data.articles);
+        }
+      })
+      .catch(err => console.error("Fetch error:", err));
   }, []);
 
   const next = () => {
-    if (index < news.length - 1) setIndex(index + 1);
+    if (index < news.length - 1) {
+      setIndex(index + 1);
+    }
   };
 
   const prev = () => {
-    if (index > 0) setIndex(index - 1);
+    if (index > 0) {
+      setIndex(index - 1);
+    }
   };
 
-  const handleTouchStart = (e) => {
-    touchStartY.current = e.touches[0].clientY;
-  };
-
-  const handleTouchEnd = (e) => {
-    const diff = touchStartY.current - e.changedTouches[0].clientY;
-    if (diff > 50) next();
-    if (diff < -50) prev();
-  };
-
-  if (news.length === 0) {
-    return <div style={{ textAlign: "center", marginTop: "50px" }}>Loading...</div>;
+  if (!news.length) {
+    return (
+      <div style={{
+        height: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "18px"
+      }}>
+        Loading News...
+      </div>
+    );
   }
 
   const article = news[index];
 
   return (
-    <div
-      onClick={next}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      style={{
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: "#f5f5f5",
-        fontFamily: "system-ui, -apple-system"
-      }}
-    >
-      <div
-        style={{
-          padding: "14px",
-          textAlign: "center",
-          fontWeight: "700",
-          fontSize: "18px",
-          backgroundColor: "white",
-          borderBottom: "1px solid #eee"
-        }}
-      >
+    <div style={{
+      fontFamily: "Arial, sans-serif",
+      background: "#f5f5f5",
+      minHeight: "100vh"
+    }}>
+      
+      {/* Header */}
+      <div style={{
+        textAlign: "center",
+        padding: "15px",
+        fontWeight: "bold",
+        fontSize: "22px",
+        background: "#ffffff"
+      }}>
         ⚡ FlashBrief
       </div>
 
-      <div
+      {/* Image */}
+      <img
+        src={article.image}
+        alt={article.title}
         style={{
-          height: "45%",
-          backgroundColor: "#ddd",
-          backgroundImage: article.image
-            ? `url(${article.image})`
-            : "url('https://via.placeholder.com/800x400?text=FlashBrief')",
-          backgroundSize: "cover",
-          backgroundPosition: "center"
+          width: "100%",
+          height: "300px",
+          objectFit: "cover"
         }}
       />
 
-      <div
-        style={{
-          flex: 1,
-          backgroundColor: "white",
-          padding: "22px",
-          borderTopLeftRadius: "25px",
-          borderTopRightRadius: "25px",
-          marginTop: "-25px",
-          boxShadow: "0 -4px 12px rgba(0,0,0,0.08)"
-        }}
-      >
-        <h2
-          style={{
-            fontSize: "22px",
-            marginBottom: "15px",
-            fontWeight: "700",
-            lineHeight: "1.3"
-          }}
-        >
+      {/* Content Card */}
+      <div style={{
+        background: "#ffffff",
+        marginTop: "-20px",
+        borderTopLeftRadius: "20px",
+        borderTopRightRadius: "20px",
+        padding: "20px"
+      }}>
+        <h2 style={{ marginBottom: "15px" }}>
           {article.title}
         </h2>
 
-        <p style={{ fontSize: "16px", lineHeight: "1.6", color: "#333" }}>
+        <p style={{ marginBottom: "20px", lineHeight: "1.6" }}>
           {article.description}
         </p>
 
@@ -105,26 +93,23 @@ export default function App() {
           href={article.url}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
           style={{
-            display: "inline-block",
-            marginTop: "12px",
-            color: "#ff3b30",
-            fontWeight: "600",
+            color: "#e53935",
+            fontWeight: "bold",
             textDecoration: "none"
           }}
         >
           Read Full Article →
         </a>
 
-        <div
-          style={{
-            marginTop: "15px",
-            fontSize: "13px",
-            color: "gray"
-          }}
-        >
-          {new Date(article.publishedAt).toLocaleString()}
+        {/* Navigation */}
+        <div style={{
+          marginTop: "25px",
+          display: "flex",
+          justifyContent: "space-between"
+        }}>
+          <button onClick={prev}>⬆ Prev</button>
+          <button onClick={next}>⬇ Next</button>
         </div>
       </div>
     </div>
