@@ -33,10 +33,10 @@ export default async function handler(req, res) {
           imgMatch?.[1] ||
           null;
 
-        // If no image → generate from keyword
+        // Stable fallback image
         if (!image && title) {
           const keyword = title.split(" ")[0];
-          image = `https://source.unsplash.com/800x600/?${encodeURIComponent(keyword)}`;
+          image = `https://dummyimage.com/800x400/111/ffffff&text=${encodeURIComponent(keyword)}`;
         }
 
         const cleanDescription = descriptionRaw
