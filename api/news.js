@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     res.setHeader("Cache-Control", "no-store");
 
     // ==============================
-    // 1️⃣ NEWS API
+    // 1️⃣ NEWS API (NO DATE FIELD)
     // ==============================
     try {
       const newsRes = await fetch(
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     }
 
     // ==============================
-    // 2️⃣ GNEWS
+    // 2️⃣ GNEWS (NO DATE FIELD)
     // ==============================
     try {
       const gnewsRes = await fetch(
@@ -69,7 +69,7 @@ export default async function handler(req, res) {
     }
 
     // ==============================
-    // 3️⃣ RSS WITH IMAGE EXTRACTION
+    // 3️⃣ RSS (NO DATE FIELD)
     // ==============================
     for (const feed of rssFeeds) {
       try {
@@ -126,7 +126,7 @@ export default async function handler(req, res) {
       new Map(combined.map(a => [a.url, a])).values()
     );
 
-    // Shuffle (Fisher-Yates)
+    // Shuffle every load
     for (let i = unique.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [unique[i], unique[j]] = [unique[j], unique[i]];
