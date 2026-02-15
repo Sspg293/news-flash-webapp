@@ -1,88 +1,57 @@
 
 export default async function handler(req, res) {
 
-  const NEWS_API_KEY = "0c97b4f80fe94b3bb717a53f282b3091";
-  const GNEWS_API_KEY = "4a142ac699050dd6b595b88cb90da432";
-
   const rssFeeds = [
+    // India
     "https://feeds.bbci.co.uk/news/rss.xml",
-    "https://techcrunch.com/feed/",
+    "https://www.hindustantimes.com/feeds/rss/topnews/rssfeed.xml",
+    "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
+    "https://indianexpress.com/section/india/feed/",
+    "https://www.thehindu.com/news/national/feeder/default.rss",
     "https://feeds.feedburner.com/ndtvnews-top-stories",
+
+    // World
     "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
-    "https://feeds.a.dj.com/rss/RSSWorldNews.xml"
+    "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+    "https://www.aljazeera.com/xml/rss/all.xml",
+    "https://www.theguardian.com/world/rss",
+    "https://www.reutersagency.com/feed/?best-topics=business-finance&post_type=best",
+
+    // Tech
+    "https://techcrunch.com/feed/",
+    "https://www.theverge.com/rss/index.xml",
+    "https://www.wired.com/feed/rss",
+    "https://feeds.arstechnica.com/arstechnica/index",
+    "https://www.cnet.com/rss/news/",
+
+    // Business
+    "https://www.moneycontrol.com/rss/business.xml",
+    "https://economictimes.indiatimes.com/rssfeedsdefault.cms",
+    "https://www.forbes.com/business/feed/",
+    "https://feeds.marketwatch.com/marketwatch/topstories/",
+
+    // Crypto
+    "https://cointelegraph.com/rss",
+    "https://bitcoinmagazine.com/.rss/full/",
+    "https://cryptoslate.com/feed/",
+
+    // Sports
+    "https://www.espn.com/espn/rss/news",
+    "https://sports.ndtv.com/rss/all",
+    "https://www.skysports.com/rss/12040"
   ];
 
   try {
     let combined = [];
 
-    // Disable cache for fresh + shuffle
     res.setHeader("Cache-Control", "no-store");
 
-    // ==============================
-    // 1️⃣ NEWS API (3 Pages)
-    // ==============================
-    try {
-      for (let page = 1; page <= 3; page++) {
-        const newsRes = await fetch(
-          `https://newsapi.org/v2/top-headlines?country=in&pageSize=20&page=${page}&apiKey=${NEWS_API_KEY}`
-        );
-
-        const newsData = await newsRes.json();
-
-        if (newsData.status === "ok" && newsData.articles) {
-          combined.push(
-            ...newsData.articles
-              .filter(a => a.title && a.url && a.urlToImage && a.url.startsWith("http"))
-              .map(a => ({
-                title: a.title,
-                description: a.description,
-                url: a.url.trim(),
-                image: a.urlToImage
-              }))
-          );
-        }
-      }
-    } catch (err) {
-      console.log("NewsAPI failed");
-    }
-
-    // ==============================
-    // 2️⃣ GNEWS (3 Pages)
-    // ==============================
-    try {
-      for (let page = 1; page <= 3; page++) {
-        const gnewsRes = await fetch(
-          `https://gnews.io/api/v4/top-headlines?country=in&lang=en&max=20&page=${page}&apikey=${GNEWS_API_KEY}`
-        );
-
-        const gnewsData = await gnewsRes.json();
-
-        if (gnewsData.articles) {
-          combined.push(
-            ...gnewsData.articles
-              .filter(a => a.title && a.url && a.image && a.url.startsWith("http"))
-              .map(a => ({
-                title: a.title,
-                description: a.description,
-                url: a.url.trim(),
-                image: a.image
-              }))
-          );
-        }
-      }
-    } catch (err) {
-      console.log("GNews failed");
-    }
-
-    // ==============================
-    // 3️⃣ RSS (Extended Fetch)
-    // ==============================
     for (const feed of rssFeeds) {
       try {
         const response = await fetch(feed);
         const xml = await response.text();
 
-        const items = xml.split("<item>").slice(1, 200);
+        const items = xml.split("<item>").slice(1, 300);
 
         items.forEach(item => {
           const rawTitle = item.split("<title>")[1]?.split("</title>")[0];
@@ -123,16 +92,16 @@ export default async function handler(req, res) {
         });
 
       } catch (err) {
-        console.log("RSS failed for:", feed);
+        console.log("RSS failed:", feed);
       }
     }
 
-    // Remove duplicates by URL
+    // Remove duplicates
     const unique = Array.from(
       new Map(combined.map(a => [a.url, a])).values()
     );
 
-    // Shuffle (Fisher-Yates)
+    // Shuffle
     for (let i = unique.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [unique[i], unique[j]] = [unique[j], unique[i]];
@@ -142,6 +111,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: "Aggregator failed" });
+    return res.status(500).json({ error: "RSS Aggregator failed" });
   }
 }
