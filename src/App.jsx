@@ -3,6 +3,12 @@ import { useEffect, useState, useRef } from "react";
 
 const API_KEY = "4a142ac699050dd6b595b88cb90da432";
 
+function limitTo100Words(text) {
+  if (!text) return "";
+  const words = text.split(" ");
+  return words.slice(0, 100).join(" ") + (words.length > 100 ? "..." : "");
+}
+
 export default function App() {
   const [news, setNews] = useState([]);
   const [index, setIndex] = useState(0);
@@ -57,40 +63,46 @@ export default function App() {
       onTouchEnd={handleTouchEnd}
       style={{
         height: "100vh",
-        backgroundImage: `url(${article.image})`,
+        width: "100%",
+        backgroundImage: `url(${article.image || ""})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         display: "flex",
-        alignItems: "flex-end",
+        alignItems: "center",
         justifyContent: "center",
-        color: "white",
         position: "relative",
-        transition: "0.4s ease"
+        overflow: "hidden",
+        fontFamily: "Arial, sans-serif"
       }}
     >
+      {/* Dark Overlay */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          background:
-            "linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.2))"
+          background: "rgba(0,0,0,0.65)"
         }}
       />
 
+      {/* Content Card */}
       <div
         style={{
           position: "relative",
-          padding: "20px",
+          width: "90%",
           maxWidth: "600px",
-          width: "100%"
+          background: "rgba(0,0,0,0.75)",
+          padding: "25px",
+          borderRadius: "15px",
+          color: "white",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.4)"
         }}
       >
-        <h2 style={{ fontSize: "22px", fontWeight: "bold" }}>
+        <h2 style={{ fontSize: "22px", marginBottom: "15px" }}>
           {article.title}
         </h2>
 
-        <p style={{ marginTop: "10px", fontSize: "16px" }}>
-          {article.description?.slice(0, 160)}...
+        <p style={{ fontSize: "16px", lineHeight: "1.6" }}>
+          {limitTo100Words(article.description)}
         </p>
 
         <div
