@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   try {
     let combined = [];
 
-    // Disable cache so shuffle works every refresh
+    // Disable cache for fresh shuffle
     res.setHeader("Cache-Control", "no-store");
 
     // ==============================
@@ -71,7 +71,7 @@ export default async function handler(req, res) {
     }
 
     // ==============================
-    // 3️⃣ RSS WITH IMAGE EXTRACTION
+    // 3️⃣ RSS WITH STRICT DATE VALIDATION
     // ==============================
     for (const feed of rssFeeds) {
       try {
@@ -87,7 +87,7 @@ export default async function handler(req, res) {
           const descriptionRaw =
             item.split("<description>")[1]?.split("</description>")[0];
 
-          if (!rawTitle || !rawLink) return;
+          if (!rawTitle || !rawLink || !pubDate) return;
 
           const title = rawTitle.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1");
 
@@ -107,10 +107,9 @@ export default async function handler(req, res) {
 
           if (!extractedImage) return;
 
+          // Strict Date Validation (NO fallback to current time)
           let parsedDate = new Date(pubDate);
-          if (isNaN(parsedDate.getTime())) {
-            parsedDate = new Date();
-          }
+          if (isNaN(parsedDate.getTime())) return;
 
           const cleanDescription = descriptionRaw
             ?.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1")
@@ -135,14 +134,7 @@ export default async function handler(req, res) {
       new Map(combined.map(a => [a.url, a])).values()
     );
 
-    // Sort newest first
-    unique.sort((a, b) => {
-      const dateA = new Date(a.publishedAt).getTime() || 0;
-      const dateB = new Date(b.publishedAt).getTime() || 0;
-      return dateB - dateA;
-    });
-
-    // Shuffle (Fisher-Yates)
+    // Shuffle
     for (let i = unique.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [unique[i], unique[j]] = [unique[j], unique[i]];
