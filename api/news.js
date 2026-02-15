@@ -7,8 +7,7 @@ export default async function handler(req, res) {
   const rssFeeds = [
     "https://feeds.bbci.co.uk/news/rss.xml",
     "https://techcrunch.com/feed/",
-    "https://feeds.feedburner.com/ndtvnews-top-stories",
-    "https://rss.cnn.com/rss/edition.rss"
+    "https://feeds.feedburner.com/ndtvnews-top-stories"
   ];
 
   const APP_LOGO =
@@ -17,11 +16,17 @@ export default async function handler(req, res) {
   try {
     let combined = [];
 
-    // 1. NewsAPI
+    // Cache for 5 minutes
+    res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate");
+
+    // ==============================
+    // 1️⃣ NEWS API
+    // ==============================
     try {
       const newsRes = await fetch(
         `https://newsapi.org/v2/top-headlines?country=in&pageSize=100&apiKey=${NEWS_API_KEY}`
       );
+
       const newsData = await newsRes.json();
 
       if (newsData.status === "ok" && newsData.articles) {
@@ -39,11 +44,14 @@ export default async function handler(req, res) {
       console.log("NewsAPI failed");
     }
 
-    // 2. GNews
+    // ==============================
+    // 2️⃣ GNEWS
+    // ==============================
     try {
       const gnewsRes = await fetch(
         `https://gnews.io/api/v4/top-headlines?country=in&lang=en&max=100&apikey=${GNEWS_API_KEY}`
       );
+
       const gnewsData = await gnewsRes.json();
 
       if (gnewsData.articles) {
@@ -61,42 +69,54 @@ export default async function handler(req, res) {
       console.log("GNews failed");
     }
 
-    // 3. RSS
-    const rssResponses = await Promise.all(
-      rssFeeds.map(url => fetch(url).then(r => r.text()))
-    );
+    // ==============================
+    // 3️⃣ RSS SAFE FETCH
+    // ==============================
+    for (const feed of rssFeeds) {
+      try {
+        const response = await fetch(feed);
+        const xml = await response.text();
 
-    rssResponses.forEach(xml => {
-      const items = xml.split("<item>").slice(1);
+        const items = xml.split("<item>").slice(1, 60);
 
-      items.forEach(item => {
-        const title = item.split("<title>")[1]?.split("</title>")[0];
-        const link = item.split("<link>")[1]?.split("</link>")[0];
-        const pubDate = item.split("<pubDate>")[1]?.split("</pubDate>")[0];
-        const descriptionRaw =
-          item.split("<description>")[1]?.split("</description>")[0];
+        items.forEach(item => {
+          const title = item.split("<title>")[1]?.split("</title>")[0];
+          const link = item.split("<link>")[1]?.split("</link>")[0];
+          const pubDate = item.split("<pubDate>")[1]?.split("</pubDate>")[0];
+          const descriptionRaw =
+            item.split("<description>")[1]?.split("</description>")[0];
 
-        if (!title || !link) return;
+          if (!title || !link) return;
 
-        const cleanTitle = title.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1");
-        const cleanDescription = descriptionRaw
-          ?.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1")
-          ?.replace(/<[^>]*>/g, "");
+          const cleanTitle = title.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1");
+          const cleanDescription = descriptionRaw
+            ?.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1")
+            ?.replace(/<[^>]*>/g, "");
 
-        combined.push({
-          title: cleanTitle,
-          description: cleanDescription,
-          url: link,
-          image: APP_LOGO,
-          publishedAt: pubDate || new Date().toISOString()
+          combined.push({
+            title: cleanTitle,
+            description: cleanDescription,
+            url: link,
+            image: APP_LOGO,
+            publishedAt: pubDate || new Date().toISOString()
+          });
         });
-      });
-    });
 
+      } catch (err) {
+        console.log("RSS failed for:", feed);
+      }
+    }
+
+    // ==============================
+    // 4️⃣ REMOVE DUPLICATES
+    // ==============================
     const unique = Array.from(
       new Map(combined.map(a => [a.url, a])).values()
     );
 
+    // ==============================
+    // 5️⃣ SORT NEWEST FIRST
+    // ==============================
     unique.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 
     return res.status(200).json({ articles: unique });
