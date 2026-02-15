@@ -33,10 +33,11 @@ export default async function handler(req, res) {
           imgMatch?.[1] ||
           null;
 
-        // Stable fallback image
-        if (!image && title) {
-          const keyword = title.split(" ")[0];
-          image = `https://dummyimage.com/800x400/111/ffffff&text=${encodeURIComponent(keyword)}`;
+        // Real image fallback using Picsum
+        if (!image) {
+          image = `https://picsum.photos/800/400?random=${Math.floor(
+            Math.random() * 10000
+          )}`;
         }
 
         const cleanDescription = descriptionRaw
