@@ -7,7 +7,6 @@ function smartSummarize(article) {
   if (!article) return "";
 
   const text = (article.title + ". " + (article.description || "")).trim();
-
   let sentences = text.split(/(?<=[.!?])\s+/);
   sentences = sentences.filter(s => s.split(" ").length > 5);
   sentences = [...new Set(sentences)];
@@ -35,15 +34,15 @@ export default function App() {
 
   useEffect(() => {
     const url =
-      "https://gnews.io/api/v4/top-headlines?country=in&lang=en&max=50&apikey=" +
+      "https://gnews.io/api/v4/top-headlines?country=in&lang=en&max=20&apikey=" +
       API_KEY;
 
-    fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url))
+    fetch(url)
       .then(res => res.json())
       .then(data => {
-        const parsed = JSON.parse(data.contents);
-        setNews(parsed.articles || []);
-      });
+        setNews(data.articles || []);
+      })
+      .catch(err => console.log(err));
   }, []);
 
   const next = () => {
