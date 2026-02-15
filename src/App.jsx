@@ -17,10 +17,21 @@ export default function App() {
       .catch(err => console.error(err));
   }, []);
 
+  // Decode HTML entities
+  const decodeHTML = (text) => {
+    if (!text) return "";
+    const txt = document.createElement("textarea");
+    txt.innerHTML = text;
+    return txt.value;
+  };
+
+  // 100-word summarizer (safe + clean)
   const summarizeTo100Words = (text) => {
     if (!text) return "";
 
-    const clean = text
+    const decoded = decodeHTML(text);
+
+    const clean = decoded
       .replace(/<[^>]*>/g, "")
       .replace(/&nbsp;/g, " ")
       .replace(/\s+/g, " ")
@@ -87,6 +98,7 @@ export default function App() {
         minHeight: "100vh"
       }}
     >
+      {/* Header */}
       <div style={{
         textAlign: "center",
         padding: "15px",
@@ -98,9 +110,10 @@ export default function App() {
         ⚡ FlashBrief
       </div>
 
+      {/* Image */}
       <img
         src={article.image}
-        alt={article.title}
+        alt={decodeHTML(article.title)}
         draggable="false"
         style={{
           width: "100%",
@@ -110,6 +123,7 @@ export default function App() {
         }}
       />
 
+      {/* Content */}
       <div style={{
         background: "#fff",
         marginTop: "-20px",
@@ -119,7 +133,7 @@ export default function App() {
         minHeight: "40vh"
       }}>
         <h2 style={{ marginBottom: "10px" }}>
-          {article.title}
+          {decodeHTML(article.title)}
         </h2>
 
         <p style={{ lineHeight: "1.6", color: "#444" }}>
