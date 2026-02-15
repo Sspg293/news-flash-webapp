@@ -13,7 +13,6 @@ export default async function handler(req, res) {
   try {
     let combined = [];
 
-    // Cache for 5 minutes
     res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate");
 
     // ==============================
@@ -29,11 +28,11 @@ export default async function handler(req, res) {
       if (newsData.status === "ok" && newsData.articles) {
         combined.push(
           ...newsData.articles
-            .filter(a => a.title && a.url && a.urlToImage)
+            .filter(a => a.title && a.url && a.urlToImage && a.url.startsWith("http"))
             .map(a => ({
               title: a.title,
               description: a.description,
-              url: a.url,
+              url: a.url.trim(),
               image: a.urlToImage,
               publishedAt: a.publishedAt
             }))
@@ -56,11 +55,11 @@ export default async function handler(req, res) {
       if (gnewsData.articles) {
         combined.push(
           ...gnewsData.articles
-            .filter(a => a.title && a.url && a.image)
+            .filter(a => a.title && a.url && a.image && a.url.startsWith("http"))
             .map(a => ({
               title: a.title,
               description: a.description,
-              url: a.url,
+              url: a.url.trim(),
               image: a.image,
               publishedAt: a.publishedAt
             }))
@@ -71,7 +70,7 @@ export default async function handler(req, res) {
     }
 
     // ==============================
-    // 3️⃣ RSS WITH REAL IMAGE ONLY
+    // 3️⃣ RSS WITH CLEAN LINK + IMAGE
     // ==============================
     for (const feed of rssFeeds) {
       try {
@@ -81,13 +80,20 @@ export default async function handler(req, res) {
         const items = xml.split("<item>").slice(1, 80);
 
         items.forEach(item => {
-          const title = item.split("<title>")[1]?.split("</title>")[0];
-          const link = item.split("<link>")[1]?.split("</link>")[0];
+          const rawTitle = item.split("<title>")[1]?.split("</title>")[0];
+          let rawLink = item.split("<link>")[1]?.split("</link>")[0];
           const pubDate = item.split("<pubDate>")[1]?.split("</pubDate>")[0];
           const descriptionRaw =
             item.split("<description>")[1]?.split("</description>")[0];
 
-          if (!title || !link) return;
+          if (!rawTitle || !rawLink) return;
+
+          const title = rawTitle.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1");
+
+          rawLink = rawLink.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1");
+          rawLink = rawLink.replace(/&amp;/g, "&").trim();
+
+          if (!rawLink.startsWith("http")) return;
 
           const mediaMatch = item.match(/<media:content.*?url="(.*?)"/);
           const enclosureMatch = item.match(/<enclosure.*?url="(.*?)"/);
@@ -100,15 +106,14 @@ export default async function handler(req, res) {
 
           if (!extractedImage) return;
 
-          const cleanTitle = title.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1");
           const cleanDescription = descriptionRaw
             ?.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1")
             ?.replace(/<[^>]*>/g, "");
 
           combined.push({
-            title: cleanTitle,
+            title,
             description: cleanDescription,
-            url: link,
+            url: rawLink,
             image: extractedImage,
             publishedAt: pubDate || new Date().toISOString()
           });
