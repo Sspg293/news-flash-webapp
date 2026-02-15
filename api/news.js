@@ -10,9 +10,6 @@ export default async function handler(req, res) {
     "https://feeds.feedburner.com/ndtvnews-top-stories"
   ];
 
-  const APP_LOGO =
-    "https://dummyimage.com/800x400/111/ffffff&text=FlashBrief";
-
   try {
     let combined = [];
 
@@ -31,13 +28,15 @@ export default async function handler(req, res) {
 
       if (newsData.status === "ok" && newsData.articles) {
         combined.push(
-          ...newsData.articles.map(a => ({
-            title: a.title,
-            description: a.description,
-            url: a.url,
-            image: a.urlToImage,
-            publishedAt: a.publishedAt
-          }))
+          ...newsData.articles
+            .filter(a => a.title && a.url && a.urlToImage)
+            .map(a => ({
+              title: a.title,
+              description: a.description,
+              url: a.url,
+              image: a.urlToImage,
+              publishedAt: a.publishedAt
+            }))
         );
       }
     } catch (err) {
@@ -56,13 +55,15 @@ export default async function handler(req, res) {
 
       if (gnewsData.articles) {
         combined.push(
-          ...gnewsData.articles.map(a => ({
-            title: a.title,
-            description: a.description,
-            url: a.url,
-            image: a.image,
-            publishedAt: a.publishedAt
-          }))
+          ...gnewsData.articles
+            .filter(a => a.title && a.url && a.image)
+            .map(a => ({
+              title: a.title,
+              description: a.description,
+              url: a.url,
+              image: a.image,
+              publishedAt: a.publishedAt
+            }))
         );
       }
     } catch (err) {
@@ -70,7 +71,7 @@ export default async function handler(req, res) {
     }
 
     // ==============================
-    // 3️⃣ RSS WITH IMAGE EXTRACTION
+    // 3️⃣ RSS WITH REAL IMAGE ONLY
     // ==============================
     for (const feed of rssFeeds) {
       try {
@@ -95,8 +96,9 @@ export default async function handler(req, res) {
           const extractedImage =
             mediaMatch?.[1] ||
             enclosureMatch?.[1] ||
-            imgMatch?.[1] ||
-            APP_LOGO;
+            imgMatch?.[1];
+
+          if (!extractedImage) return;
 
           const cleanTitle = title.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1");
           const cleanDescription = descriptionRaw
