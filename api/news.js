@@ -1,5 +1,5 @@
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
 
   const NEWS_API_KEY = "0c97b4f80fe94b3bb717a53f282b3091";
   const GNEWS_API_KEY = "4a142ac699050dd6b595b88cb90da432";
@@ -11,20 +11,13 @@ module.exports = async function handler(req, res) {
     "https://rss.cnn.com/rss/edition.rss"
   ];
 
-  const APP_LOGO = `data:image/svg+xml;base64,${Buffer.from(`
-    <svg width="800" height="400" xmlns="http://www.w3.org/2000/svg">
-      <rect width="800" height="400" fill="#111"/>
-      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
-        font-size="60" fill="#ffffff" font-family="Arial" font-weight="bold">
-        FlashBrief
-      </text>
-    </svg>
-  `).toString("base64")}`;
+  const APP_LOGO =
+    "https://dummyimage.com/800x400/111/ffffff&text=FlashBrief";
 
   try {
     let combined = [];
 
-    // NewsAPI
+    // 1. NewsAPI
     try {
       const newsRes = await fetch(
         `https://newsapi.org/v2/top-headlines?country=in&pageSize=100&apiKey=${NEWS_API_KEY}`
@@ -46,7 +39,7 @@ module.exports = async function handler(req, res) {
       console.log("NewsAPI failed");
     }
 
-    // GNews
+    // 2. GNews
     try {
       const gnewsRes = await fetch(
         `https://gnews.io/api/v4/top-headlines?country=in&lang=en&max=100&apikey=${GNEWS_API_KEY}`
@@ -68,7 +61,7 @@ module.exports = async function handler(req, res) {
       console.log("GNews failed");
     }
 
-    // RSS
+    // 3. RSS
     const rssResponses = await Promise.all(
       rssFeeds.map(url => fetch(url).then(r => r.text()))
     );
@@ -106,10 +99,10 @@ module.exports = async function handler(req, res) {
 
     unique.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 
-    res.status(200).json({ articles: unique });
+    return res.status(200).json({ articles: unique });
 
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Aggregator failed" });
+    return res.status(500).json({ error: "Aggregator failed" });
   }
-};
+}
