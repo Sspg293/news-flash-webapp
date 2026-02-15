@@ -2,66 +2,79 @@
 export default async function handler(req, res) {
   const GNEWS_API_KEY = "4a142ac699050dd6b595b88cb90da432";
 
-  const queries = [
-    "india",
-    "technology",
-    "business",
-    "sports",
-    "world",
-    "finance",
-    "crypto",
-    "ai",
-    "startups",
-    "politics"
+  const rssFeeds = [
+    "https://feeds.bbci.co.uk/news/rss.xml",
+    "https://techcrunch.com/feed/",
+    "https://feeds.feedburner.com/ndtvnews-top-stories",
+    "https://rss.cnn.com/rss/edition.rss"
   ];
 
   try {
-    let allArticles = [];
+    let combinedArticles = [];
 
-    // Fetch top headlines
-    const topRes = await fetch(
+    // 🔥 1. Fetch GNews
+    const gnewsRes = await fetch(
       `https://gnews.io/api/v4/top-headlines?country=in&lang=en&max=50&apikey=${GNEWS_API_KEY}`
     );
-    const topData = await topRes.json();
 
-    if (topData.articles) {
-      allArticles.push(...topData.articles);
-    }
+    const gnewsData = await gnewsRes.json();
 
-    // Fetch multiple search queries
-    for (const query of queries) {
-      const response = await fetch(
-        `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=50&apikey=${GNEWS_API_KEY}`
+    if (gnewsData.articles) {
+      combinedArticles.push(
+        ...gnewsData.articles.map(article => ({
+          title: article.title,
+          description: article.description,
+          url: article.url,
+          image: article.image,
+          publishedAt: article.publishedAt
+        }))
       );
-
-      const data = await response.json();
-
-      if (data.articles) {
-        allArticles.push(...data.articles);
-      }
     }
 
-    // Remove duplicates by title
-    const unique = Array.from(
-      new Map(allArticles.map(a => [a.title, a])).values()
+    // 🔥 2. Fetch RSS Feeds
+    const rssResponses = await Promise.all(
+      rssFeeds.map(url => fetch(url).then(r => r.text()))
     );
 
-    // Shuffle articles
-    unique.sort(() => Math.random() - 0.5);
+    rssResponses.forEach(xml => {
+      const items = xml.split("<item>").slice(1);
 
-    // Format for frontend
-    const formatted = unique.map(article => ({
-      title: article.title,
-      description: article.description,
-      url: article.url,
-      image: article.image,
-      publishedAt: article.publishedAt
-    }));
+      items.forEach(item => {
+        const title = item.split("<title>")[1]?.split("</title>")[0];
+        const link = item.split("<link>")[1]?.split("</link>")[0];
+        const pubDate = item.split("<pubDate>")[1]?.split("</pubDate>")[0];
+        const descriptionRaw =
+          item.split("<description>")[1]?.split("</description>")[0];
 
-    res.status(200).json({ articles: formatted });
+        if (!title || !link) return;
+
+        const cleanTitle = title.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1");
+        const cleanDescription = descriptionRaw
+          ?.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1")
+          ?.replace(/<[^>]*>/g, "");
+
+        combinedArticles.push({
+          title: cleanTitle,
+          description: cleanDescription,
+          url: link,
+          image: null, // RSS often lacks clean images
+          publishedAt: pubDate || new Date().toISOString()
+        });
+      });
+    });
+
+    // 🔥 3. Remove duplicates by URL
+    const unique = Array.from(
+      new Map(combinedArticles.map(a => [a.url, a])).values()
+    );
+
+    // 🔥 4. Sort by newest first
+    unique.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+
+    res.status(200).json({ articles: unique });
 
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Large feed fetch failed" });
+    res.status(500).json({ error: "Hybrid fetch failed" });
   }
 }
