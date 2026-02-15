@@ -32,7 +32,7 @@ export default function App() {
       .trim();
   };
 
-  // Sentence-based smart summary (~45 words)
+  // Smart summary (~45 words) WITHOUT counting headline
   const smartSummary = (text) => {
     if (!text) return "";
 
@@ -58,8 +58,7 @@ export default function App() {
     }
 
     if (!result) {
-      const fallback = clean.split(" ").slice(0, 45).join(" ");
-      return fallback + "...";
+      return clean.split(" ").slice(0, 45).join(" ") + "...";
     }
 
     return result.trim();
@@ -105,8 +104,9 @@ export default function App() {
 
   const article = news[index];
 
+  // IMPORTANT: Only use description/content for summary (not title)
   const summaryText = smartSummary(
-    article.description || article.content || article.title
+    article.description || article.content || ""
   );
 
   return (
