@@ -14,8 +14,7 @@ export default function App() {
         if (data.articles) {
           setNews(data.articles);
         }
-      })
-      .catch(err => console.error("Fetch error:", err));
+      });
   }, []);
 
   const next = () => {
@@ -30,25 +29,23 @@ export default function App() {
     }
   };
 
-  // Swipe handlers ONLY
+  // Swipe only (no tap change)
   const handleTouchStart = (e) => {
-    touchStartX.current = e.targetTouches[0].clientX;
+    touchStartX.current = e.touches[0].clientX;
   };
 
   const handleTouchMove = (e) => {
-    touchEndX.current = e.targetTouches[0].clientX;
+    touchEndX.current = e.touches[0].clientX;
   };
 
   const handleTouchEnd = () => {
     const distance = touchStartX.current - touchEndX.current;
 
-    if (distance > 60) {
-      next(); // Swipe Left → Next
-    }
+    // Ignore small touches (tap)
+    if (Math.abs(distance) < 60) return;
 
-    if (distance < -60) {
-      prev(); // Swipe Right → Prev
-    }
+    if (distance > 60) next();     // Swipe left
+    if (distance < -60) prev();    // Swipe right
   };
 
   if (!news.length) {
@@ -57,8 +54,7 @@ export default function App() {
         height: "100vh",
         display: "flex",
         alignItems: "center",
-        justifyContent: "center",
-        fontSize: "18px"
+        justifyContent: "center"
       }}>
         Loading News...
       </div>
@@ -73,19 +69,18 @@ export default function App() {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       style={{
-        fontFamily: "Arial, sans-serif",
+        fontFamily: "Arial",
         background: "#f5f5f5",
         minHeight: "100vh"
       }}
     >
-      
       {/* Header */}
       <div style={{
         textAlign: "center",
         padding: "15px",
         fontWeight: "bold",
         fontSize: "22px",
-        background: "#ffffff"
+        background: "#fff"
       }}>
         ⚡ FlashBrief
       </div>
@@ -94,26 +89,26 @@ export default function App() {
       <img
         src={article.image}
         alt={article.title}
+        draggable="false"
         style={{
           width: "100%",
           height: "300px",
-          objectFit: "cover"
+          objectFit: "cover",
+          userSelect: "none"
         }}
       />
 
       {/* Content */}
       <div style={{
-        background: "#ffffff",
+        background: "#fff",
         marginTop: "-20px",
         borderTopLeftRadius: "20px",
         borderTopRightRadius: "20px",
         padding: "20px"
       }}>
-        <h2 style={{ marginBottom: "15px" }}>
-          {article.title}
-        </h2>
+        <h2>{article.title}</h2>
 
-        <p style={{ marginBottom: "20px", lineHeight: "1.6" }}>
+        <p style={{ lineHeight: "1.6" }}>
           {article.description}
         </p>
 
@@ -126,6 +121,7 @@ export default function App() {
             fontWeight: "bold",
             textDecoration: "none"
           }}
+          onClick={(e) => e.stopPropagation()}
         >
           Read Full Article →
         </a>
