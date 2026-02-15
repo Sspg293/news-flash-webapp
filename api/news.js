@@ -4,92 +4,72 @@ let cache = {
   time: 0
 };
 
-function cleanText(text) {
-  if (!text) return "";
-
-  return text
-    .replace(/<!\[CDATA\[/g, "")
-    .replace(/\]\]>/g, "")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function summarize50(text) {
-  const clean = cleanText(text);
-  if (!clean) return "";
-
-  const words = clean.split(" ");
-  if (words.length <= 50) return clean;
-
-  return words.slice(0, 50).join(" ") + "...";
-}
-
-async function extractFirstParagraph(url) {
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0" }
-    });
-
-    const html = await res.text();
-
-    const match = html.match(/<p>(.*?)<\/p>/i);
-    if (!match) return "";
-
-    return cleanText(match[1]);
-
-  } catch {
-    return "";
-  }
-}
-
 export default async function handler(req, res) {
   const now = Date.now();
 
-  // Serve cached version (5 min)
+  // Serve cached data for 5 minutes
   if (cache.data && now - cache.time < 5 * 60 * 1000) {
     return res.status(200).json({ articles: cache.data });
   }
 
-  const rssFeed = "https://feeds.bbci.co.uk/news/rss.xml";
+  const rssFeeds = [
+    "https://feeds.bbci.co.uk/news/rss.xml",
+    "https://www.hindustantimes.com/feeds/rss/topnews/rssfeed.xml",
+    "https://indianexpress.com/section/india/feed/",
+    "https://techcrunch.com/feed/",
+    "https://www.theverge.com/rss/index.xml"
+  ];
 
   try {
-    const response = await fetch(rssFeed);
-    const xml = await response.text();
+    let combined = [];
 
-    const items = xml.split("<item>").slice(1, 16); // limit 15
+    for (const feed of rssFeeds) {
+      try {
+        const response = await fetch(feed);
+        const xml = await response.text();
 
-    let articles = [];
+        const items = xml.split("<item>").slice(1, 50);
 
-    for (let item of items) {
-      let rawTitle = item.split("<title>")[1]?.split("</title>")[0] || "";
-      const title = cleanText(rawTitle);
+        items.forEach(item => {
+          const title = item.split("<title>")[1]?.split("</title>")[0];
+          const link = item.split("<link>")[1]?.split("</link>")[0];
+          const mediaMatch = item.match(/<media:content.*?url="(.*?)"/);
+          const enclosureMatch = item.match(/<enclosure.*?url="(.*?)"/);
 
-      const link = item.split("<link>")[1]?.split("</link>")[0];
-      const image =
-        item.match(/<media:content.*?url="(.*?)"/)?.[1] ||
-        item.match(/<enclosure.*?url="(.*?)"/)?.[1] ||
-        "";
+          const image = mediaMatch?.[1] || enclosureMatch?.[1];
 
-      if (!title || !link) continue;
-
-      const paragraph = await extractFirstParagraph(link);
-      const summary = summarize50(paragraph || title);
-
-      articles.push({
-        title,
-        description: summary,
-        url: link.trim(),
-        image
-      });
+          if (title && link && image) {
+            combined.push({
+              title: title.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1"),
+              description: "",
+              url: link.trim(),
+              image
+            });
+          }
+        });
+      } catch (err) {
+        console.log("Feed failed:", feed);
+      }
     }
 
-    cache = { data: articles, time: now };
+    // Remove duplicates
+    const unique = Array.from(
+      new Map(combined.map(a => [a.url, a])).values()
+    );
 
-    return res.status(200).json({ articles });
+    // Shuffle
+    for (let i = unique.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [unique[i], unique[j]] = [unique[j], unique[i]];
+    }
+
+    // Save cache
+    cache = { data: unique, time: now };
+
+    return res.status(200).json({ articles: unique });
 
   } catch (error) {
-    return res.status(500).json({ error: "News fetch failed" });
+    console.error(error);
+    return res.status(500).json({ error: "RSS Aggregator failed" });
   }
 }
