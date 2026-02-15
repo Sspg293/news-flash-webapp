@@ -12,11 +12,26 @@ export default function App() {
     fetch("/api/news")
       .then(res => res.json())
       .then(data => {
-        if (data.articles) {
-          setNews(data.articles);
-        }
-      });
+        setNews(data.articles || []);
+      })
+      .catch(err => console.error(err));
   }, []);
+
+  const summarizeTo100Words = (text) => {
+    if (!text) return "";
+
+    const clean = text
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const words = clean.split(" ");
+
+    if (words.length <= 100) return clean;
+
+    return words.slice(0, 100).join(" ") + "...";
+  };
 
   const next = () => {
     if (index < news.length - 1) {
@@ -40,10 +55,9 @@ export default function App() {
     const distance = startX.current - endX;
     const timeTaken = Date.now() - startTime.current;
 
-    // Strict swipe detection
     if (Math.abs(distance) > 80 && timeTaken < 800) {
-      if (distance > 0) next();   // Swipe Left
-      else prev();                // Swipe Right
+      if (distance > 0) next();
+      else prev();
     }
   };
 
@@ -53,7 +67,8 @@ export default function App() {
         height: "100vh",
         display: "flex",
         alignItems: "center",
-        justifyContent: "center"
+        justifyContent: "center",
+        fontFamily: "Arial"
       }}>
         Loading News...
       </div>
@@ -66,25 +81,23 @@ export default function App() {
     <div
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      onClick={(e) => e.stopPropagation()}  // Hard block tap
       style={{
         fontFamily: "Arial",
         background: "#f5f5f5",
         minHeight: "100vh"
       }}
     >
-      {/* Header */}
       <div style={{
         textAlign: "center",
         padding: "15px",
         fontWeight: "bold",
         fontSize: "22px",
-        background: "#fff"
+        background: "#fff",
+        boxShadow: "0 2px 5px rgba(0,0,0,0.1)"
       }}>
         ⚡ FlashBrief
       </div>
 
-      {/* Image */}
       <img
         src={article.image}
         alt={article.title}
@@ -97,18 +110,20 @@ export default function App() {
         }}
       />
 
-      {/* Content */}
       <div style={{
         background: "#fff",
         marginTop: "-20px",
         borderTopLeftRadius: "20px",
         borderTopRightRadius: "20px",
-        padding: "20px"
+        padding: "20px",
+        minHeight: "40vh"
       }}>
-        <h2>{article.title}</h2>
+        <h2 style={{ marginBottom: "10px" }}>
+          {article.title}
+        </h2>
 
-        <p style={{ lineHeight: "1.6" }}>
-          {article.description}
+        <p style={{ lineHeight: "1.6", color: "#444" }}>
+          {summarizeTo100Words(article.description)}
         </p>
 
         <a
@@ -120,7 +135,6 @@ export default function App() {
             fontWeight: "bold",
             textDecoration: "none"
           }}
-          onClick={(e) => e.stopPropagation()}
         >
           Read Full Article →
         </a>
