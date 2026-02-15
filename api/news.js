@@ -7,76 +7,82 @@ export default async function handler(req, res) {
   const rssFeeds = [
     "https://feeds.bbci.co.uk/news/rss.xml",
     "https://techcrunch.com/feed/",
-    "https://feeds.feedburner.com/ndtvnews-top-stories"
+    "https://feeds.feedburner.com/ndtvnews-top-stories",
+    "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+    "https://feeds.a.dj.com/rss/RSSWorldNews.xml"
   ];
 
   try {
     let combined = [];
 
-    // Disable cache so shuffle works every refresh
+    // Disable cache for fresh + shuffle
     res.setHeader("Cache-Control", "no-store");
 
     // ==============================
-    // 1️⃣ NEWS API (NO DATE FIELD)
+    // 1️⃣ NEWS API (3 Pages)
     // ==============================
     try {
-      const newsRes = await fetch(
-        `https://newsapi.org/v2/top-headlines?country=in&pageSize=100&apiKey=${NEWS_API_KEY}`
-      );
-
-      const newsData = await newsRes.json();
-
-      if (newsData.status === "ok" && newsData.articles) {
-        combined.push(
-          ...newsData.articles
-            .filter(a => a.title && a.url && a.urlToImage && a.url.startsWith("http"))
-            .map(a => ({
-              title: a.title,
-              description: a.description,
-              url: a.url.trim(),
-              image: a.urlToImage
-            }))
+      for (let page = 1; page <= 3; page++) {
+        const newsRes = await fetch(
+          `https://newsapi.org/v2/top-headlines?country=in&pageSize=20&page=${page}&apiKey=${NEWS_API_KEY}`
         );
+
+        const newsData = await newsRes.json();
+
+        if (newsData.status === "ok" && newsData.articles) {
+          combined.push(
+            ...newsData.articles
+              .filter(a => a.title && a.url && a.urlToImage && a.url.startsWith("http"))
+              .map(a => ({
+                title: a.title,
+                description: a.description,
+                url: a.url.trim(),
+                image: a.urlToImage
+              }))
+          );
+        }
       }
     } catch (err) {
       console.log("NewsAPI failed");
     }
 
     // ==============================
-    // 2️⃣ GNEWS (NO DATE FIELD)
+    // 2️⃣ GNEWS (3 Pages)
     // ==============================
     try {
-      const gnewsRes = await fetch(
-        `https://gnews.io/api/v4/top-headlines?country=in&lang=en&max=100&apikey=${GNEWS_API_KEY}`
-      );
-
-      const gnewsData = await gnewsRes.json();
-
-      if (gnewsData.articles) {
-        combined.push(
-          ...gnewsData.articles
-            .filter(a => a.title && a.url && a.image && a.url.startsWith("http"))
-            .map(a => ({
-              title: a.title,
-              description: a.description,
-              url: a.url.trim(),
-              image: a.image
-            }))
+      for (let page = 1; page <= 3; page++) {
+        const gnewsRes = await fetch(
+          `https://gnews.io/api/v4/top-headlines?country=in&lang=en&max=20&page=${page}&apikey=${GNEWS_API_KEY}`
         );
+
+        const gnewsData = await gnewsRes.json();
+
+        if (gnewsData.articles) {
+          combined.push(
+            ...gnewsData.articles
+              .filter(a => a.title && a.url && a.image && a.url.startsWith("http"))
+              .map(a => ({
+                title: a.title,
+                description: a.description,
+                url: a.url.trim(),
+                image: a.image
+              }))
+          );
+        }
       }
     } catch (err) {
       console.log("GNews failed");
     }
 
     // ==============================
-    // 3️⃣ RSS (NO DATE FIELD)
+    // 3️⃣ RSS (Extended Fetch)
     // ==============================
     for (const feed of rssFeeds) {
       try {
         const response = await fetch(feed);
         const xml = await response.text();
 
-        const items = xml.split("<item>").slice(1, 80);
+        const items = xml.split("<item>").slice(1, 200);
 
         items.forEach(item => {
           const rawTitle = item.split("<title>")[1]?.split("</title>")[0];
@@ -121,12 +127,12 @@ export default async function handler(req, res) {
       }
     }
 
-    // Remove duplicates
+    // Remove duplicates by URL
     const unique = Array.from(
       new Map(combined.map(a => [a.url, a])).values()
     );
 
-    // Shuffle every load
+    // Shuffle (Fisher-Yates)
     for (let i = unique.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [unique[i], unique[j]] = [unique[j], unique[i]];
