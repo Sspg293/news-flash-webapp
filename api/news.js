@@ -1,5 +1,7 @@
 
 export default async function handler(req, res) {
+
+  const NEWS_API_KEY = "0c97b4f80fe94b3bb717a53f282b3091";
   const GNEWS_API_KEY = "4a142ac699050dd6b595b88cb90da432";
 
   const rssFeeds = [
@@ -9,29 +11,65 @@ export default async function handler(req, res) {
     "https://rss.cnn.com/rss/edition.rss"
   ];
 
+  // App Logo (SVG Base64)
+  const APP_LOGO = `data:image/svg+xml;base64,${Buffer.from(`
+    <svg width="800" height="400" xmlns="http://www.w3.org/2000/svg">
+      <rect width="800" height="400" fill="#111"/>
+      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
+        font-size="60" fill="#ffffff" font-family="Arial" font-weight="bold">
+        FlashBrief
+      </text>
+    </svg>
+  `).toString("base64")}`;
+
   try {
-    let combinedArticles = [];
+    let combined = [];
 
-    // 🔥 1. Fetch GNews
-    const gnewsRes = await fetch(
-      `https://gnews.io/api/v4/top-headlines?country=in&lang=en&max=50&apikey=${GNEWS_API_KEY}`
-    );
-
-    const gnewsData = await gnewsRes.json();
-
-    if (gnewsData.articles) {
-      combinedArticles.push(
-        ...gnewsData.articles.map(article => ({
-          title: article.title,
-          description: article.description,
-          url: article.url,
-          image: article.image,
-          publishedAt: article.publishedAt
-        }))
+    // 1. NewsAPI
+    try {
+      const newsRes = await fetch(
+        `https://newsapi.org/v2/top-headlines?country=in&pageSize=100&apiKey=${NEWS_API_KEY}`
       );
+      const newsData = await newsRes.json();
+
+      if (newsData.status === "ok" && newsData.articles) {
+        combined.push(
+          ...newsData.articles.map(a => ({
+            title: a.title,
+            description: a.description,
+            url: a.url,
+            image: a.urlToImage,
+            publishedAt: a.publishedAt
+          }))
+        );
+      }
+    } catch (err) {
+      console.log("NewsAPI failed");
     }
 
-    // 🔥 2. Fetch RSS Feeds
+    // 2. GNews
+    try {
+      const gnewsRes = await fetch(
+        `https://gnews.io/api/v4/top-headlines?country=in&lang=en&max=100&apikey=${GNEWS_API_KEY}`
+      );
+      const gnewsData = await gnewsRes.json();
+
+      if (gnewsData.articles) {
+        combined.push(
+          ...gnewsData.articles.map(a => ({
+            title: a.title,
+            description: a.description,
+            url: a.url,
+            image: a.image,
+            publishedAt: a.publishedAt
+          }))
+        );
+      }
+    } catch (err) {
+      console.log("GNews failed");
+    }
+
+    // 3. RSS Feeds
     const rssResponses = await Promise.all(
       rssFeeds.map(url => fetch(url).then(r => r.text()))
     );
@@ -53,28 +91,28 @@ export default async function handler(req, res) {
           ?.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1")
           ?.replace(/<[^>]*>/g, "");
 
-        combinedArticles.push({
+        combined.push({
           title: cleanTitle,
           description: cleanDescription,
           url: link,
-          image: null, // RSS often lacks clean images
+          image: APP_LOGO,
           publishedAt: pubDate || new Date().toISOString()
         });
       });
     });
 
-    // 🔥 3. Remove duplicates by URL
+    // Remove duplicates by URL
     const unique = Array.from(
-      new Map(combinedArticles.map(a => [a.url, a])).values()
+      new Map(combined.map(a => [a.url, a])).values()
     );
 
-    // 🔥 4. Sort by newest first
+    // Sort newest first
     unique.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 
     res.status(200).json({ articles: unique });
 
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Hybrid fetch failed" });
+    res.status(500).json({ error: "Aggregator failed" });
   }
 }
