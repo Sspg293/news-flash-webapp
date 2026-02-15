@@ -1,9 +1,11 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
 export default function App() {
   const [news, setNews] = useState([]);
   const [index, setIndex] = useState(0);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
 
   useEffect(() => {
     fetch("/api/news")
@@ -18,13 +20,34 @@ export default function App() {
 
   const next = () => {
     if (index < news.length - 1) {
-      setIndex(index + 1);
+      setIndex(prev => prev + 1);
     }
   };
 
   const prev = () => {
     if (index > 0) {
-      setIndex(index - 1);
+      setIndex(prev => prev - 1);
+    }
+  };
+
+  // Handle Swipe
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    const distance = touchStartX.current - touchEndX.current;
+
+    if (distance > 50) {
+      next(); // Swipe Left → Next
+    }
+
+    if (distance < -50) {
+      prev(); // Swipe Right → Prev
     }
   };
 
@@ -45,11 +68,16 @@ export default function App() {
   const article = news[index];
 
   return (
-    <div style={{
-      fontFamily: "Arial, sans-serif",
-      background: "#f5f5f5",
-      minHeight: "100vh"
-    }}>
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{
+        fontFamily: "Arial, sans-serif",
+        background: "#f5f5f5",
+        minHeight: "100vh"
+      }}
+    >
       
       {/* Header */}
       <div style={{
@@ -73,7 +101,7 @@ export default function App() {
         }}
       />
 
-      {/* Content Card */}
+      {/* Content */}
       <div style={{
         background: "#ffffff",
         marginTop: "-20px",
@@ -101,16 +129,6 @@ export default function App() {
         >
           Read Full Article →
         </a>
-
-        {/* Navigation */}
-        <div style={{
-          marginTop: "25px",
-          display: "flex",
-          justifyContent: "space-between"
-        }}>
-          <button onClick={prev}>⬆ Prev</button>
-          <button onClick={next}>⬇ Next</button>
-        </div>
       </div>
     </div>
   );
