@@ -30,7 +30,7 @@ export default function App() {
     }
   };
 
-  // Handle Swipe
+  // Swipe handlers ONLY
   const handleTouchStart = (e) => {
     touchStartX.current = e.targetTouches[0].clientX;
   };
@@ -42,11 +42,11 @@ export default function App() {
   const handleTouchEnd = () => {
     const distance = touchStartX.current - touchEndX.current;
 
-    if (distance > 50) {
+    if (distance > 60) {
       next(); // Swipe Left → Next
     }
 
-    if (distance < -50) {
+    if (distance < -60) {
       prev(); // Swipe Right → Prev
     }
   };
