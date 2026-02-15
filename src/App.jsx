@@ -3,10 +3,15 @@ import { useEffect, useState, useRef } from "react";
 
 const API_KEY = "4a142ac699050dd6b595b88cb90da432";
 
-function limitTo100Words(text) {
-  if (!text) return "";
-  const words = text.split(" ");
-  return words.slice(0, 100).join(" ") + (words.length > 100 ? "..." : "");
+function generate100WordSummary(article) {
+  if (!article) return "";
+
+  const baseText = (article.title + ". " + (article.description || "")).trim();
+  const words = baseText.split(/\s+/);
+
+  if (words.length <= 100) return baseText;
+
+  return words.slice(0, 100).join(" ") + "...";
 }
 
 export default function App() {
@@ -48,11 +53,7 @@ export default function App() {
   };
 
   if (news.length === 0) {
-    return (
-      <div style={{ textAlign: "center", marginTop: "50px" }}>
-        Loading...
-      </div>
-    );
+    return <div style={{ textAlign: "center", marginTop: "50px" }}>Loading...</div>;
   }
 
   const article = news[index];
@@ -69,7 +70,6 @@ export default function App() {
         fontFamily: "Arial, sans-serif"
       }}
     >
-      {/* Image Top */}
       <div
         style={{
           height: "40%",
@@ -79,7 +79,6 @@ export default function App() {
         }}
       />
 
-      {/* Content Bottom */}
       <div
         style={{
           flex: 1,
@@ -96,7 +95,7 @@ export default function App() {
         </h2>
 
         <p style={{ fontSize: "15px", lineHeight: "1.6" }}>
-          {limitTo100Words(article.description)}
+          {generate100WordSummary(article)}
         </p>
 
         <div
