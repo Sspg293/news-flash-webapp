@@ -76,6 +76,7 @@ export default function App() {
         fontFamily: "system-ui, -apple-system, sans-serif"
       }}
     >
+      {/* Header */}
       <div
         style={{
           padding: "15px",
@@ -89,6 +90,7 @@ export default function App() {
         ⚡ FlashBrief
       </div>
 
+      {/* Image */}
       <div
         style={{
           height: "40%",
@@ -98,6 +100,7 @@ export default function App() {
         }}
       />
 
+      {/* Content */}
       <div
         style={{
           flex: 1,
@@ -115,6 +118,25 @@ export default function App() {
         <p style={{ fontSize: "16px", lineHeight: "1.7", color: "#333" }}>
           {smartSummarize(article)}
         </p>
+
+        {/* Read Full Article Link */}
+        {article.url && (
+          <div style={{ marginTop: "15px" }}>
+            <a
+              href={article.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: "#ff3b30",
+                fontWeight: "600",
+                textDecoration: "none"
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              Read Full Article →
+            </a>
+          </div>
+        )}
 
         <div
           style={{
