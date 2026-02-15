@@ -20,24 +20,30 @@ export default async function handler(req, res) {
         const title = item.split("<title>")[1]?.split("</title>")[0];
         const link = item.split("<link>")[1]?.split("</link>")[0];
         const pubDate = item.split("<pubDate>")[1]?.split("</pubDate>")[0];
-        const description =
+        const descriptionRaw =
           item.split("<description>")[1]?.split("</description>")[0];
 
         const mediaMatch = item.match(/<media:content.*?url="(.*?)"/);
         const enclosureMatch = item.match(/<enclosure.*?url="(.*?)"/);
 
+        // Extract image from <img> inside description
+        const imgMatch = descriptionRaw?.match(/<img.*?src="(.*?)"/);
+
         const image =
           mediaMatch?.[1] ||
           enclosureMatch?.[1] ||
+          imgMatch?.[1] ||
           null;
+
+        const cleanDescription = descriptionRaw
+          ?.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1")
+          ?.replace(/<[^>]*>/g, "");
 
         if (title && link) {
           articles.push({
             title: title.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1"),
             url: link,
-            description: description
-              ?.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1")
-              ?.replace(/<[^>]*>/g, ""),
+            description: cleanDescription,
             image,
             publishedAt: pubDate || new Date().toISOString()
           });
