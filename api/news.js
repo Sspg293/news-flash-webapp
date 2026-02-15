@@ -1,5 +1,5 @@
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
 
   const NEWS_API_KEY = "0c97b4f80fe94b3bb717a53f282b3091";
   const GNEWS_API_KEY = "4a142ac699050dd6b595b88cb90da432";
@@ -11,7 +11,6 @@ export default async function handler(req, res) {
     "https://rss.cnn.com/rss/edition.rss"
   ];
 
-  // App Logo (SVG Base64)
   const APP_LOGO = `data:image/svg+xml;base64,${Buffer.from(`
     <svg width="800" height="400" xmlns="http://www.w3.org/2000/svg">
       <rect width="800" height="400" fill="#111"/>
@@ -25,7 +24,7 @@ export default async function handler(req, res) {
   try {
     let combined = [];
 
-    // 1. NewsAPI
+    // NewsAPI
     try {
       const newsRes = await fetch(
         `https://newsapi.org/v2/top-headlines?country=in&pageSize=100&apiKey=${NEWS_API_KEY}`
@@ -47,7 +46,7 @@ export default async function handler(req, res) {
       console.log("NewsAPI failed");
     }
 
-    // 2. GNews
+    // GNews
     try {
       const gnewsRes = await fetch(
         `https://gnews.io/api/v4/top-headlines?country=in&lang=en&max=100&apikey=${GNEWS_API_KEY}`
@@ -69,7 +68,7 @@ export default async function handler(req, res) {
       console.log("GNews failed");
     }
 
-    // 3. RSS Feeds
+    // RSS
     const rssResponses = await Promise.all(
       rssFeeds.map(url => fetch(url).then(r => r.text()))
     );
@@ -101,12 +100,10 @@ export default async function handler(req, res) {
       });
     });
 
-    // Remove duplicates by URL
     const unique = Array.from(
       new Map(combined.map(a => [a.url, a])).values()
     );
 
-    // Sort newest first
     unique.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 
     res.status(200).json({ articles: unique });
@@ -115,4 +112,4 @@ export default async function handler(req, res) {
     console.error(error);
     res.status(500).json({ error: "Aggregator failed" });
   }
-}
+};
