@@ -13,7 +13,8 @@ export default async function handler(req, res) {
   try {
     let combined = [];
 
-    res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate");
+    // Disable cache so shuffle works every refresh
+    res.setHeader("Cache-Control", "no-store");
 
     // ==============================
     // 1️⃣ NEWS API
@@ -34,7 +35,7 @@ export default async function handler(req, res) {
               description: a.description,
               url: a.url.trim(),
               image: a.urlToImage,
-              publishedAt: a.publishedAt
+              publishedAt: new Date(a.publishedAt).toISOString()
             }))
         );
       }
@@ -61,7 +62,7 @@ export default async function handler(req, res) {
               description: a.description,
               url: a.url.trim(),
               image: a.image,
-              publishedAt: a.publishedAt
+              publishedAt: new Date(a.publishedAt).toISOString()
             }))
         );
       }
@@ -70,7 +71,7 @@ export default async function handler(req, res) {
     }
 
     // ==============================
-    // 3️⃣ RSS WITH CLEAN LINK + IMAGE
+    // 3️⃣ RSS WITH IMAGE EXTRACTION
     // ==============================
     for (const feed of rssFeeds) {
       try {
@@ -106,6 +107,11 @@ export default async function handler(req, res) {
 
           if (!extractedImage) return;
 
+          let parsedDate = new Date(pubDate);
+          if (isNaN(parsedDate.getTime())) {
+            parsedDate = new Date();
+          }
+
           const cleanDescription = descriptionRaw
             ?.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1")
             ?.replace(/<[^>]*>/g, "");
@@ -115,7 +121,7 @@ export default async function handler(req, res) {
             description: cleanDescription,
             url: rawLink,
             image: extractedImage,
-            publishedAt: pubDate || new Date().toISOString()
+            publishedAt: parsedDate.toISOString()
           });
         });
 
@@ -124,11 +130,23 @@ export default async function handler(req, res) {
       }
     }
 
+    // Remove duplicates
     const unique = Array.from(
       new Map(combined.map(a => [a.url, a])).values()
     );
 
-    unique.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+    // Sort newest first
+    unique.sort((a, b) => {
+      const dateA = new Date(a.publishedAt).getTime() || 0;
+      const dateB = new Date(b.publishedAt).getTime() || 0;
+      return dateB - dateA;
+    });
+
+    // Shuffle (Fisher-Yates)
+    for (let i = unique.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [unique[i], unique[j]] = [unique[j], unique[i]];
+    }
 
     return res.status(200).json({ articles: unique });
 
