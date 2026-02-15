@@ -70,14 +70,14 @@ export default async function handler(req, res) {
     }
 
     // ==============================
-    // 3️⃣ RSS SAFE FETCH
+    // 3️⃣ RSS WITH IMAGE EXTRACTION
     // ==============================
     for (const feed of rssFeeds) {
       try {
         const response = await fetch(feed);
         const xml = await response.text();
 
-        const items = xml.split("<item>").slice(1, 60);
+        const items = xml.split("<item>").slice(1, 80);
 
         items.forEach(item => {
           const title = item.split("<title>")[1]?.split("</title>")[0];
@@ -88,6 +88,16 @@ export default async function handler(req, res) {
 
           if (!title || !link) return;
 
+          const mediaMatch = item.match(/<media:content.*?url="(.*?)"/);
+          const enclosureMatch = item.match(/<enclosure.*?url="(.*?)"/);
+          const imgMatch = descriptionRaw?.match(/<img.*?src="(.*?)"/);
+
+          const extractedImage =
+            mediaMatch?.[1] ||
+            enclosureMatch?.[1] ||
+            imgMatch?.[1] ||
+            APP_LOGO;
+
           const cleanTitle = title.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1");
           const cleanDescription = descriptionRaw
             ?.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1")
@@ -97,7 +107,7 @@ export default async function handler(req, res) {
             title: cleanTitle,
             description: cleanDescription,
             url: link,
-            image: APP_LOGO,
+            image: extractedImage,
             publishedAt: pubDate || new Date().toISOString()
           });
         });
@@ -107,16 +117,10 @@ export default async function handler(req, res) {
       }
     }
 
-    // ==============================
-    // 4️⃣ REMOVE DUPLICATES
-    // ==============================
     const unique = Array.from(
       new Map(combined.map(a => [a.url, a])).values()
     );
 
-    // ==============================
-    // 5️⃣ SORT NEWEST FIRST
-    // ==============================
     unique.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 
     return res.status(200).json({ articles: unique });
