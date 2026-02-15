@@ -3,15 +3,29 @@ import { useEffect, useState, useRef } from "react";
 
 const API_KEY = "4a142ac699050dd6b595b88cb90da432";
 
-function generate100WordSummary(article) {
+function smartSummarize(article) {
   if (!article) return "";
 
-  const baseText = (article.title + ". " + (article.description || "")).trim();
-  const words = baseText.split(/\s+/);
+  const text = (article.title + ". " + (article.description || "")).trim();
 
-  if (words.length <= 100) return baseText;
+  let sentences = text.split(/(?<=[.!?])\s+/);
+  sentences = sentences.filter(s => s.split(" ").length > 5);
+  sentences = [...new Set(sentences)];
 
-  return words.slice(0, 100).join(" ") + "...";
+  let summary = "";
+  let wordCount = 0;
+
+  for (let sentence of sentences) {
+    const words = sentence.split(" ");
+    if (wordCount + words.length <= 100) {
+      summary += sentence + " ";
+      wordCount += words.length;
+    } else {
+      break;
+    }
+  }
+
+  return summary.trim();
 }
 
 export default function App() {
@@ -25,8 +39,8 @@ export default function App() {
       API_KEY;
 
     fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url))
-      .then((res) => res.json())
-      .then((data) => {
+      .then(res => res.json())
+      .then(data => {
         const parsed = JSON.parse(data.contents);
         setNews(parsed.articles || []);
       });
@@ -95,7 +109,7 @@ export default function App() {
         </h2>
 
         <p style={{ fontSize: "15px", lineHeight: "1.6" }}>
-          {generate100WordSummary(article)}
+          {smartSummarize(article)}
         </p>
 
         <div
