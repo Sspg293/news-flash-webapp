@@ -9,15 +9,12 @@ export default function App() {
   const startTime = useRef(0);
 
   useEffect(() => {
-    fetch("/api/news")
+    fetch("/api/news?nocache=" + Date.now())
       .then(res => res.json())
-      .then(data => {
-        setNews(data.articles || []);
-      })
+      .then(data => setNews(data.articles || []))
       .catch(err => console.error(err));
   }, []);
 
-  // Decode HTML entities
   const decodeHTML = (text) => {
     if (!text) return "";
     const txt = document.createElement("textarea");
@@ -25,7 +22,16 @@ export default function App() {
     return txt.value;
   };
 
-  // 100-word summarizer (safe + clean)
+  const cleanHeadline = (text) => {
+    if (!text) return "";
+    return text
+      .replace(/^Breaking:\s*/i, "")
+      .replace(/^Watch:\s*/i, "")
+      .replace(/^Explained:\s*/i, "")
+      .replace(/^Live:\s*/i, "")
+      .trim();
+  };
+
   const summarizeTo100Words = (text) => {
     if (!text) return "";
 
@@ -38,22 +44,17 @@ export default function App() {
       .trim();
 
     const words = clean.split(" ");
-
     if (words.length <= 100) return clean;
 
     return words.slice(0, 100).join(" ") + "...";
   };
 
   const next = () => {
-    if (index < news.length - 1) {
-      setIndex(prev => prev + 1);
-    }
+    if (index < news.length - 1) setIndex(prev => prev + 1);
   };
 
   const prev = () => {
-    if (index > 0) {
-      setIndex(prev => prev - 1);
-    }
+    if (index > 0) setIndex(prev => prev - 1);
   };
 
   const handleTouchStart = (e) => {
@@ -88,6 +89,10 @@ export default function App() {
 
   const article = news[index];
 
+  const summaryText = summarizeTo100Words(
+    article.description || article.content || article.title
+  );
+
   return (
     <div
       onTouchStart={handleTouchStart}
@@ -98,7 +103,6 @@ export default function App() {
         minHeight: "100vh"
       }}
     >
-      {/* Header */}
       <div style={{
         textAlign: "center",
         padding: "15px",
@@ -110,7 +114,6 @@ export default function App() {
         ⚡ FlashBrief
       </div>
 
-      {/* Image */}
       <img
         src={article.image}
         alt={decodeHTML(article.title)}
@@ -123,7 +126,6 @@ export default function App() {
         }}
       />
 
-      {/* Content */}
       <div style={{
         background: "#fff",
         marginTop: "-20px",
@@ -133,11 +135,11 @@ export default function App() {
         minHeight: "40vh"
       }}>
         <h2 style={{ marginBottom: "10px" }}>
-          {decodeHTML(article.title)}
+          {cleanHeadline(decodeHTML(article.title))}
         </h2>
 
         <p style={{ lineHeight: "1.6", color: "#444" }}>
-          {summarizeTo100Words(article.description)}
+          {summaryText}
         </p>
 
         <a
