@@ -1,7 +1,7 @@
+
 export default async function handler(req, res) {
   const feeds = [
     "https://feeds.bbci.co.uk/news/rss.xml",
-    "http://rss.cnn.com/rss/edition.rss",
     "https://techcrunch.com/feed/",
     "https://feeds.feedburner.com/ndtvnews-top-stories"
   ];
@@ -15,26 +15,45 @@ export default async function handler(req, res) {
 
     responses.forEach(xml => {
       const items = xml.split("<item>").slice(1);
+
       items.forEach(item => {
         const title = item.split("<title>")[1]?.split("</title>")[0];
         const link = item.split("<link>")[1]?.split("</link>")[0];
         const pubDate = item.split("<pubDate>")[1]?.split("</pubDate>")[0];
+        const description =
+          item.split("<description>")[1]?.split("</description>")[0];
+
+        const mediaMatch = item.match(/<media:content.*?url="(.*?)"/);
+        const enclosureMatch = item.match(/<enclosure.*?url="(.*?)"/);
+
+        const image =
+          mediaMatch?.[1] ||
+          enclosureMatch?.[1] ||
+          null;
 
         if (title && link) {
           articles.push({
             title: title.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1"),
             url: link,
+            description: description
+              ?.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1")
+              ?.replace(/<[^>]*>/g, ""),
+            image,
             publishedAt: pubDate || new Date().toISOString()
           });
         }
       });
     });
 
-    const unique = Array.from(new Map(articles.map(a => [a.title, a])).values());
+    const unique = Array.from(
+      new Map(articles.map(a => [a.title, a])).values()
+    );
+
     unique.sort(() => Math.random() - 0.5);
 
     res.status(200).json({ articles: unique });
+
   } catch (error) {
-    res.status(500).json({ error: "RSS fetch failed" });
+    res.status(500).json({ error: "RSS parsing failed" });
   }
 }
