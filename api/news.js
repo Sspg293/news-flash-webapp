@@ -8,6 +8,12 @@ export default async function handler(req, res) {
     "https://feeds.feedburner.com/ndtvnews-top-stories"
   ];
 
+  const stopWords = [
+    "the","is","at","which","on","and","a","an","after","before",
+    "from","with","over","under","into","about","above","below",
+    "to","of","for","in","by","as","that","this","it","be"
+  ];
+
   try {
     const responses = await Promise.all(
       feeds.map(url => fetch(url).then(r => r.text()))
@@ -16,7 +22,7 @@ export default async function handler(req, res) {
     let articles = [];
 
     for (const xml of responses) {
-      const items = xml.split("<item>").slice(1, 12);
+      const items = xml.split("<item>").slice(1, 10);
 
       for (const item of items) {
         const title = item.split("<title>")[1]?.split("</title>")[0];
@@ -28,7 +34,17 @@ export default async function handler(req, res) {
         if (!title || !link) continue;
 
         const cleanTitle = title.replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1");
-        const keyword = cleanTitle.split(" ").slice(0, 2).join(" ");
+
+        const words = cleanTitle
+          .replace(/[^\w\s]/gi, "")
+          .split(" ")
+          .filter(
+            word =>
+              word.length > 3 &&
+              !stopWords.includes(word.toLowerCase())
+          );
+
+        const keyword = words.slice(0, 2).join(" ") || words[0];
 
         let image = null;
 
