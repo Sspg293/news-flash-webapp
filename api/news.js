@@ -4,14 +4,21 @@ let cache = {
   time: 0
 };
 
-function summarize50(text) {
+function cleanText(text) {
   if (!text) return "";
 
-  const clean = text
+  return text
+    .replace(/<!\[CDATA\[/g, "")
+    .replace(/\]\]>/g, "")
     .replace(/<[^>]*>/g, "")
     .replace(/&nbsp;/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function summarize50(text) {
+  const clean = cleanText(text);
+  if (!clean) return "";
 
   const words = clean.split(" ");
   if (words.length <= 50) return clean;
@@ -21,13 +28,17 @@ function summarize50(text) {
 
 async function extractFirstParagraph(url) {
   try {
-    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0" }
+    });
+
     const html = await res.text();
 
     const match = html.match(/<p>(.*?)<\/p>/i);
     if (!match) return "";
 
-    return match[1];
+    return cleanText(match[1]);
+
   } catch {
     return "";
   }
@@ -36,6 +47,7 @@ async function extractFirstParagraph(url) {
 export default async function handler(req, res) {
   const now = Date.now();
 
+  // Serve cached version (5 min)
   if (cache.data && now - cache.time < 5 * 60 * 1000) {
     return res.status(200).json({ articles: cache.data });
   }
@@ -46,16 +58,19 @@ export default async function handler(req, res) {
     const response = await fetch(rssFeed);
     const xml = await response.text();
 
-    const items = xml.split("<item>").slice(1, 16); // limit 15 articles
+    const items = xml.split("<item>").slice(1, 16); // limit 15
 
     let articles = [];
 
     for (let item of items) {
-      const title = item.split("<title>")[1]?.split("</title>")[0];
+      let rawTitle = item.split("<title>")[1]?.split("</title>")[0] || "";
+      const title = cleanText(rawTitle);
+
       const link = item.split("<link>")[1]?.split("</link>")[0];
       const image =
         item.match(/<media:content.*?url="(.*?)"/)?.[1] ||
-        item.match(/<enclosure.*?url="(.*?)"/)?.[1];
+        item.match(/<enclosure.*?url="(.*?)"/)?.[1] ||
+        "";
 
       if (!title || !link) continue;
 
@@ -66,7 +81,7 @@ export default async function handler(req, res) {
         title,
         description: summary,
         url: link.trim(),
-        image: image || ""
+        image
       });
     }
 
@@ -75,6 +90,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ articles });
 
   } catch (error) {
-    return res.status(500).json({ error: "Failed to fetch full articles" });
+    return res.status(500).json({ error: "News fetch failed" });
   }
 }
