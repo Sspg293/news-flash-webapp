@@ -4,48 +4,37 @@ import React, { useEffect, useState, useRef } from "react";
 export default function App() {
   const [news, setNews] = useState([]);
   const [index, setIndex] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [category, setCategory] = useState("general");
 
   const startX = useRef(0);
   const startTime = useRef(0);
 
+  const categories = [
+    "general",
+    "business",
+    "technology",
+    "sports",
+    "health",
+    "science",
+    "entertainment"
+  ];
+
   useEffect(() => {
-    fetch("/api/news?nocache=" + Date.now())
+    fetch(`/api/news?category=${category}&nocache=` + Date.now())
       .then(res => res.json())
-      .then(data => setNews(data.articles || []))
+      .then(data => {
+        setNews(data.articles || []);
+        setIndex(0);
+      })
       .catch(err => console.error(err));
-  }, []);
+  }, [category]);
 
-  const decodeHTML = (text) => {
+  const summarize50 = (text) => {
     if (!text) return "";
-    const txt = document.createElement("textarea");
-    txt.innerHTML = text;
-    return txt.value;
-  };
-
-  const cleanText = (text) => {
-    return decodeHTML(text)
-      .replace(/<[^>]*>/g, "")
-      .replace(/&nbsp;/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  };
-
-  // 50-word summary ALWAYS guaranteed
-  const summarize50 = (article) => {
-    const baseText =
-      article.description ||
-      article.content ||
-      article.title ||
-      "";
-
-    const clean = cleanText(baseText);
-
-    if (!clean) return cleanText(article.title);
-
+    const clean = text.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
     const words = clean.split(" ");
-
     if (words.length <= 50) return clean;
-
     return words.slice(0, 50).join(" ") + "...";
   };
 
@@ -74,82 +63,94 @@ export default function App() {
   };
 
   if (!news.length) {
-    return (
-      <div style={{
-        height: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "Arial"
-      }}>
-        Loading News...
-      </div>
-    );
+    return <div style={{ padding: 20 }}>Loading...</div>;
   }
 
   const article = news[index];
 
   return (
-    <div
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      style={{
-        fontFamily: "Arial",
-        background: "#f5f5f5",
-        minHeight: "100vh"
-      }}
-    >
+    <div style={{ fontFamily: "Arial", minHeight: "100vh", background: "#f5f5f5" }}>
+      
+      {/* Sidebar */}
       <div style={{
-        textAlign: "center",
+        position: "fixed",
+        top: 0,
+        left: menuOpen ? 0 : "-250px",
+        width: "250px",
+        height: "100%",
+        background: "#fff",
+        boxShadow: "2px 0 5px rgba(0,0,0,0.2)",
+        transition: "left 0.3s",
+        paddingTop: "60px",
+        zIndex: 1000
+      }}>
+        {categories.map(cat => (
+          <div
+            key={cat}
+            onClick={() => {
+              setCategory(cat);
+              setMenuOpen(false);
+            }}
+            style={{
+              padding: "15px 20px",
+              cursor: "pointer",
+              borderBottom: "1px solid #eee",
+              textTransform: "capitalize"
+            }}
+          >
+            {cat}
+          </div>
+        ))}
+      </div>
+
+      {/* Header */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
         padding: "15px",
-        fontWeight: "bold",
-        fontSize: "22px",
         background: "#fff",
         boxShadow: "0 2px 5px rgba(0,0,0,0.1)"
       }}>
-        ⚡ FlashBrief
+        <div
+          onClick={() => setMenuOpen(!menuOpen)}
+          style={{ fontSize: 22, cursor: "pointer", marginRight: 15 }}
+        >
+          ☰
+        </div>
+        <div style={{ fontWeight: "bold", fontSize: 20 }}>
+          ⚡ FlashBrief
+        </div>
       </div>
 
-      <img
-        src={article.image}
-        alt={decodeHTML(article.title)}
-        draggable="false"
-        style={{
-          width: "100%",
-          height: "300px",
-          objectFit: "cover",
-          userSelect: "none"
-        }}
-      />
+      {/* Content */}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <img
+          src={article.image}
+          alt={article.title}
+          style={{ width: "100%", height: 300, objectFit: "cover" }}
+        />
 
-      <div style={{
-        background: "#fff",
-        marginTop: "-20px",
-        borderTopLeftRadius: "20px",
-        borderTopRightRadius: "20px",
-        padding: "20px",
-        minHeight: "40vh"
-      }}>
-        <h2 style={{ marginBottom: "10px" }}>
-          {cleanText(article.title)}
-        </h2>
-
-        <p style={{ lineHeight: "1.6", color: "#444" }}>
-          {summarize50(article)}
-        </p>
-
-        <a
-          href={article.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: "#e53935",
-            fontWeight: "bold",
-            textDecoration: "none"
-          }}
-        >
-          Read Full Article →
-        </a>
+        <div style={{
+          background: "#fff",
+          marginTop: -20,
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          padding: 20
+        }}>
+          <h2>{article.title}</h2>
+          <p>{summarize50(article.description || article.title)}</p>
+          <a
+            href={article.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "#e53935", fontWeight: "bold" }}
+          >
+            Read Full Article →
+          </a>
+        </div>
       </div>
     </div>
   );
