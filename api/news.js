@@ -1,5 +1,5 @@
 
-// FINAL Hindi RSS Backend (Image Guaranteed Working)
+// Stable Hindi RSS Backend (Original Image Logic Restored)
 
 let cache = {};
 const CACHE_TIME = 5 * 60 * 1000;
@@ -63,21 +63,12 @@ export default async function handler(req, res) {
       const title = cleanText(rawTitle);
       const description = summarize50(rawDescription);
 
-      // 1️⃣ Try media image
+      // ORIGINAL IMAGE LOGIC (No random fallback)
       let image =
         item.match(/<media:content.*?url="(.*?)"/)?.[1] ||
         item.match(/<enclosure.*?url="(.*?)"/)?.[1] ||
+        extractImageFromDescription(rawDescription) ||
         "";
-
-      // 2️⃣ Try image inside description
-      if (!image) {
-        image = extractImageFromDescription(rawDescription);
-      }
-
-      // 3️⃣ Final fallback (always working random image)
-      if (!image) {
-        image = "https://picsum.photos/800/400?random=" + Math.floor(Math.random() * 10000);
-      }
 
       if (!title || !link) continue;
 
