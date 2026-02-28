@@ -1,5 +1,5 @@
 
-// FlashBrief Unlimited Backend (Category Fixed + No 20 Limit)
+// FlashBrief FINAL - Proper Category Separation
 
 let cache = {};
 const CACHE_TIME = 5 * 60 * 1000;
@@ -37,15 +37,27 @@ export default async function handler(req, res) {
 
   const category = req.query.category || "general";
 
+  // 🔥 Different feeds per category (REAL separated feeds)
   const feeds = {
-    general: "https://feeds.bbci.co.uk/hindi/rss.xml",
-    business: "https://feeds.bbci.co.uk/hindi/business/rss.xml",
-    technology: "https://feeds.bbci.co.uk/hindi/science/rss.xml",
-    sports: "https://feeds.bbci.co.uk/hindi/sport/rss.xml",
-    science: "https://feeds.bbci.co.uk/hindi/science/rss.xml"
+    general: [
+      "https://feeds.bbci.co.uk/hindi/rss.xml"
+    ],
+    business: [
+      "https://feeds.bbci.co.uk/hindi/business/rss.xml"
+    ],
+    technology: [
+      "https://feeds.bbci.co.uk/hindi/science/rss.xml",
+      "https://feeds.bbci.co.uk/news/technology/rss.xml"
+    ],
+    sports: [
+      "https://feeds.bbci.co.uk/hindi/sport/rss.xml"
+    ],
+    science: [
+      "https://feeds.bbci.co.uk/hindi/science/rss.xml"
+    ]
   };
 
-  const rssFeed = feeds[category] || feeds.general;
+  const selectedFeeds = feeds[category] || feeds.general;
   const now = Date.now();
 
   if (cache[category] && now - cache[category].time < CACHE_TIME) {
@@ -53,42 +65,43 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(rssFeed);
-    const xml = await response.text();
 
-    // REMOVE LIMIT → get ALL items
-    const items = xml.split("<item>").slice(1);
-
-    let articles = [];
+    let allArticles = [];
     let usedTitles = new Set();
 
-    for (let item of items) {
+    for (let feedUrl of selectedFeeds) {
 
-      let rawTitle = item.split("<title>")[1]?.split("</title>")[0] || "";
-      let rawDescription = item.split("<description>")[1]?.split("</description>")[0] || "";
-      let link = item.split("<link>")[1]?.split("</link>")[0];
+      const response = await fetch(feedUrl);
+      const xml = await response.text();
+      const items = xml.split("<item>").slice(1);
 
-      const title = cleanText(rawTitle);
-      const description = summarize50(rawDescription);
-      const image = extractImage(item, rawDescription);
+      for (let item of items) {
 
-      if (!title || !link) continue;
+        let rawTitle = item.split("<title>")[1]?.split("</title>")[0] || "";
+        let rawDescription = item.split("<description>")[1]?.split("</description>")[0] || "";
+        let link = item.split("<link>")[1]?.split("</link>")[0];
 
-      // Prevent duplicates
-      if (usedTitles.has(title)) continue;
-      usedTitles.add(title);
+        const title = cleanText(rawTitle);
+        const description = summarize50(rawDescription);
+        const image = extractImage(item, rawDescription);
 
-      articles.push({
-        title,
-        description,
-        url: link.trim(),
-        image
-      });
+        if (!title || !link) continue;
+        if (usedTitles.has(title)) continue;
+
+        usedTitles.add(title);
+
+        allArticles.push({
+          title,
+          description,
+          url: link.trim(),
+          image
+        });
+      }
     }
 
-    cache[category] = { data: articles, time: now };
+    cache[category] = { data: allArticles, time: now };
 
-    return res.status(200).json({ articles });
+    return res.status(200).json({ articles: allArticles });
 
   } catch (error) {
     return res.status(500).json({ error: "समाचार लोड नहीं हो पाए" });
