@@ -1,156 +1,107 @@
 
+// FlashBrief Polished Hindi UI
 import React, { useEffect, useState, useRef } from "react";
 
 export default function App() {
   const [news, setNews] = useState([]);
   const [index, setIndex] = useState(0);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [category, setCategory] = useState("general");
 
   const startX = useRef(0);
-  const startTime = useRef(0);
-
-  const categories = [
-    "general",
-    "business",
-    "technology",
-    "sports",
-    "health",
-    "science",
-    "entertainment"
-  ];
 
   useEffect(() => {
-    fetch(`/api/news?category=${category}&nocache=` + Date.now())
+    fetch(`/api/news?category=${category}&t=` + Date.now())
       .then(res => res.json())
       .then(data => {
         setNews(data.articles || []);
         setIndex(0);
-      })
-      .catch(err => console.error(err));
+      });
   }, [category]);
 
-  const summarize50 = (text) => {
-    if (!text) return "";
-    const clean = text.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
-    const words = clean.split(" ");
-    if (words.length <= 50) return clean;
-    return words.slice(0, 50).join(" ") + "...";
+  const next = () => index < news.length - 1 && setIndex(index + 1);
+  const prev = () => index > 0 && setIndex(index - 1);
+
+  const handleTouchStart = e => startX.current = e.touches[0].clientX;
+
+  const handleTouchEnd = e => {
+    const diff = startX.current - e.changedTouches[0].clientX;
+    if (diff > 80) next();
+    if (diff < -80) prev();
   };
 
-  const next = () => {
-    if (index < news.length - 1) setIndex(prev => prev + 1);
-  };
-
-  const prev = () => {
-    if (index > 0) setIndex(prev => prev - 1);
-  };
-
-  const handleTouchStart = (e) => {
-    startX.current = e.touches[0].clientX;
-    startTime.current = Date.now();
-  };
-
-  const handleTouchEnd = (e) => {
-    const endX = e.changedTouches[0].clientX;
-    const distance = startX.current - endX;
-    const timeTaken = Date.now() - startTime.current;
-
-    if (Math.abs(distance) > 80 && timeTaken < 800) {
-      if (distance > 0) next();
-      else prev();
-    }
-  };
-
-  if (!news.length) {
-    return <div style={{ padding: 20 }}>Loading...</div>;
-  }
+  if (!news.length) return <div style={{ padding: 20 }}>समाचार लोड हो रहे हैं...</div>;
 
   const article = news[index];
 
   return (
-    <div style={{ fontFamily: "Arial", minHeight: "100vh", background: "#f5f5f5" }}>
-      
-      {/* Sidebar */}
-      <div style={{
-        position: "fixed",
-        top: 0,
-        left: menuOpen ? 0 : "-250px",
-        width: "250px",
-        height: "100%",
-        background: "#fff",
-        boxShadow: "2px 0 5px rgba(0,0,0,0.2)",
-        transition: "left 0.3s",
-        paddingTop: "60px",
-        zIndex: 1000
-      }}>
-        {categories.map(cat => (
-          <div
-            key={cat}
-            onClick={() => {
-              setCategory(cat);
-              setMenuOpen(false);
-            }}
-            style={{
-              padding: "15px 20px",
-              cursor: "pointer",
-              borderBottom: "1px solid #eee",
-              textTransform: "capitalize"
-            }}
-          >
-            {cat}
-          </div>
-        ))}
-      </div>
+    <div style={{
+      fontFamily: "system-ui",
+      background: "#f4f4f4",
+      minHeight: "100vh"
+    }}>
 
       {/* Header */}
       <div style={{
-        display: "flex",
-        alignItems: "center",
-        padding: "15px",
+        padding: "16px",
+        fontWeight: "bold",
+        fontSize: "22px",
         background: "#fff",
-        boxShadow: "0 2px 5px rgba(0,0,0,0.1)"
+        boxShadow: "0 2px 6px rgba(0,0,0,0.08)"
       }}>
-        <div
-          onClick={() => setMenuOpen(!menuOpen)}
-          style={{ fontSize: 22, cursor: "pointer", marginRight: 15 }}
-        >
-          ☰
-        </div>
-        <div style={{ fontWeight: "bold", fontSize: 20 }}>
-          ⚡ FlashBrief
-        </div>
+        ⚡ फ्लैशब्रीफ
       </div>
 
-      {/* Content */}
-      <div
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
+      {/* Swipe Area */}
+      <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+
+        {/* Image */}
         <img
           src={article.image}
-          alt={article.title}
-          style={{ width: "100%", height: 300, objectFit: "cover" }}
+          alt=""
+          style={{
+            width: "100%",
+            height: "260px",
+            objectFit: "cover"
+          }}
         />
 
+        {/* Card */}
         <div style={{
           background: "#fff",
-          marginTop: -20,
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          padding: 20
+          marginTop: "-20px",
+          borderTopLeftRadius: "20px",
+          borderTopRightRadius: "20px",
+          padding: "20px"
         }}>
-          <h2>{article.title}</h2>
-          <p>{summarize50(article.description || article.title)}</p>
+          <h2 style={{ lineHeight: "1.4" }}>
+            {article.title}
+          </h2>
+
+          <p style={{
+            marginTop: "12px",
+            lineHeight: "1.6",
+            fontSize: "16px",
+            color: "#444"
+          }}>
+            {article.description}
+          </p>
+
           <a
             href={article.url}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: "#e53935", fontWeight: "bold" }}
+            style={{
+              display: "inline-block",
+              marginTop: "15px",
+              color: "#e53935",
+              fontWeight: "bold",
+              textDecoration: "none"
+            }}
           >
-            Read Full Article →
+            पूरा लेख पढ़ें →
           </a>
         </div>
+
       </div>
     </div>
   );
