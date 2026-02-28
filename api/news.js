@@ -1,5 +1,6 @@
 
-// PRO Hindi Backend news.js
+// FINAL Hindi Backend with Strong Image Extraction
+
 let cache = {};
 const CACHE_TIME = 5 * 60 * 1000;
 
@@ -22,15 +23,25 @@ function summarize50(text) {
   return words.slice(0, 50).join(" ") + "...";
 }
 
-async function extractFirstParagraph(url) {
+async function extractArticleData(url) {
   try {
-    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0" }
+    });
     const html = await res.text();
-    const match = html.match(/<p>(.*?)<\/p>/i);
-    if (!match) return "";
-    return cleanText(match[1]);
+
+    // Extract first paragraph
+    const paragraphMatch = html.match(/<p>(.*?)<\/p>/i);
+    const paragraph = paragraphMatch ? cleanText(paragraphMatch[1]) : "";
+
+    // Extract og:image
+    const ogImageMatch = html.match(/property="og:image" content="(.*?)"/i);
+    const ogImage = ogImageMatch ? ogImageMatch[1] : "";
+
+    return { paragraph, ogImage };
+
   } catch {
-    return "";
+    return { paragraph: "", ogImage: "" };
   }
 }
 
@@ -64,23 +75,30 @@ export default async function handler(req, res) {
     for (let item of items) {
       let rawTitle = item.split("<title>")[1]?.split("</title>")[0] || "";
       const title = cleanText(rawTitle);
+
       const link = item.split("<link>")[1]?.split("</link>")[0];
 
-      const image =
+      // Try RSS image first
+      let image =
         item.match(/<media:content.*?url="(.*?)"/)?.[1] ||
         item.match(/<enclosure.*?url="(.*?)"/)?.[1] ||
         "";
 
       if (!title || !link) continue;
 
-      const paragraph = await extractFirstParagraph(link);
+      const { paragraph, ogImage } = await extractArticleData(link);
+
+      if (!image && ogImage) {
+        image = ogImage;
+      }
+
       const summary = summarize50(paragraph || title);
 
       articles.push({
         title,
         description: summary,
         url: link.trim(),
-        image
+        image: image || "https://via.placeholder.com/800x400?text=FlashBrief"
       });
     }
 
