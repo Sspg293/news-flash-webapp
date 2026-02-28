@@ -4,129 +4,120 @@ import React, { useEffect, useState, useRef } from "react";
 export default function App() {
   const [articles, setArticles] = useState([]);
   const [index, setIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [category, setCategory] = useState("general");
+  const touchStartX = useRef(null);
 
-  const startX = useRef(0);
-
-  // ✅ CATEGORY FIX (Cache Bust + Proper Refetch)
   useEffect(() => {
-    const loadNews = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `/api/news?category=${category}&t=${Date.now()}`
-        );
-        const data = await res.json();
-        setArticles(data.articles || []);
-        setIndex(0);
-      } catch (err) {
-        console.log(err);
-      }
-      setLoading(false);
-    };
+    fetch("/api/news")
+      .then((res) => res.json())
+      .then((data) => setArticles(data.articles || []));
+  }, []);
 
-    loadNews();
-  }, [category]);
-
-  const next = () => {
-    if (index < articles.length - 1) setIndex(index + 1);
+  const nextArticle = () => {
+    if (index < articles.length - 1) {
+      setIndex(index + 1);
+    }
   };
 
-  const prev = () => {
-    if (index > 0) setIndex(index - 1);
+  const prevArticle = () => {
+    if (index > 0) {
+      setIndex(index - 1);
+    }
   };
 
   const handleTouchStart = (e) => {
-    startX.current = e.touches[0].clientX;
+    touchStartX.current = e.touches[0].clientX;
   };
 
   const handleTouchEnd = (e) => {
-    const diff = startX.current - e.changedTouches[0].clientX;
-    if (diff > 50) next();
-    if (diff < -50) prev();
+    if (!touchStartX.current) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+
+    if (diff > 50) nextArticle();
+    if (diff < -50) prevArticle();
+
+    touchStartX.current = null;
   };
 
-  const current = articles[index];
+  if (!articles.length) {
+    return (
+      <div style={{ padding: 20, fontFamily: "sans-serif" }}>
+        Loading...
+      </div>
+    );
+  }
+
+  const article = articles[index];
 
   return (
     <div
-      style={{
-        background: "#f2f2f2",
-        minHeight: "100vh",
-        fontFamily: "sans-serif"
-      }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      style={{
+        fontFamily: "sans-serif",
+        background: "#f5f5f5",
+        minHeight: "100vh",
+      }}
     >
       {/* Header */}
       <div
         style={{
-          padding: "15px 20px",
-          fontSize: 22,
-          fontWeight: "bold"
+          padding: "16px",
+          fontWeight: "bold",
+          fontSize: "22px",
+          background: "#fff",
+          borderBottom: "1px solid #eee",
         }}
       >
-        ⚡ FlashBrief PRO
+        ⚡ FlashBrief
       </div>
 
-      {/* Category Buttons */}
-      <div style={{ display: "flex", overflowX: "auto", padding: 10 }}>
-        {["general", "business", "technology", "sports", "science"].map(
-          (cat) => (
-            <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              style={{
-                marginRight: 10,
-                padding: "6px 14px",
-                background: category === cat ? "#e63946" : "#ccc",
-                border: "none",
-                borderRadius: 20,
-                color: "#fff"
-              }}
-            >
-              {cat}
-            </button>
-          )
-        )}
+      {/* Image */}
+      {article.image && (
+        <img
+          src={article.image}
+          alt="news"
+          style={{
+            width: "100%",
+            height: "250px",
+            objectFit: "cover",
+          }}
+        />
+      )}
+
+      {/* Content */}
+      <div
+        style={{
+          background: "#fff",
+          marginTop: "-20px",
+          borderTopLeftRadius: "20px",
+          borderTopRightRadius: "20px",
+          padding: "20px",
+          minHeight: "50vh",
+        }}
+      >
+        <h2 style={{ fontSize: "22px", fontWeight: "700" }}>
+          {article.title}
+        </h2>
+
+        <p style={{ color: "#555", marginTop: "10px" }}>
+          {article.description}
+        </p>
+
+        <a
+          href={article.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "inline-block",
+            marginTop: "15px",
+            color: "#e53935",
+            fontWeight: "bold",
+            textDecoration: "none",
+          }}
+        >
+          पूरा लेख पढ़ें →
+        </a>
       </div>
-
-      {/* Loader */}
-      {loading && (
-        <div style={{ padding: 30 }}>
-          <div style={{ height: 200, background: "#ddd", borderRadius: 10 }} />
-        </div>
-      )}
-
-      {/* Article */}
-      {!loading && current && (
-        <div style={{ padding: 20 }}>
-          {current.image && (
-            <img
-              src={current.image}
-              alt="news"
-              style={{ width: "100%", borderRadius: 12 }}
-            />
-          )}
-
-          <h2 style={{ marginTop: 20 }}>{current.title}</h2>
-          <p style={{ opacity: 0.8 }}>{current.description}</p>
-
-          <a
-            href={current.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "#e63946", fontWeight: "bold" }}
-          >
-            पूरा लेख पढ़ें →
-          </a>
-
-          <p style={{ marginTop: 20, fontSize: 12 }}>
-            👁 Viewed: {index + 1} / {articles.length}
-          </p>
-        </div>
-      )}
     </div>
   );
 }
