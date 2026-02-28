@@ -1,5 +1,5 @@
 
-// Stable Hindi RSS Backend (Original Image Logic Restored)
+// BBC Hindi RSS Backend - Correct Image Extraction
 
 let cache = {};
 const CACHE_TIME = 5 * 60 * 1000;
@@ -23,12 +23,29 @@ function summarize50(text) {
   return words.slice(0, 50).join(" ") + "...";
 }
 
-function extractImageFromDescription(description) {
-  const match = description.match(/<img.*?src="(.*?)"/i);
-  return match ? match[1] : "";
+function extractImageFromItem(item, description) {
+
+  // 1️⃣ BBC uses media:thumbnail
+  let thumbnail = item.match(/<media:thumbnail.*?url="(.*?)"/i)?.[1];
+  if (thumbnail) return thumbnail;
+
+  // 2️⃣ media:content
+  let media = item.match(/<media:content.*?url="(.*?)"/i)?.[1];
+  if (media) return media;
+
+  // 3️⃣ enclosure
+  let enclosure = item.match(/<enclosure.*?url="(.*?)"/i)?.[1];
+  if (enclosure) return enclosure;
+
+  // 4️⃣ img inside description
+  let img = description.match(/<img.*?src="(.*?)"/i)?.[1];
+  if (img) return img;
+
+  return "";
 }
 
 export default async function handler(req, res) {
+
   const category = req.query.category || "general";
 
   const feeds = {
@@ -49,6 +66,7 @@ export default async function handler(req, res) {
   }
 
   try {
+
     const response = await fetch(rssFeed);
     const xml = await response.text();
     const items = xml.split("<item>").slice(1, 21);
@@ -56,6 +74,7 @@ export default async function handler(req, res) {
     let articles = [];
 
     for (let item of items) {
+
       let rawTitle = item.split("<title>")[1]?.split("</title>")[0] || "";
       let rawDescription = item.split("<description>")[1]?.split("</description>")[0] || "";
       let link = item.split("<link>")[1]?.split("</link>")[0];
@@ -63,12 +82,7 @@ export default async function handler(req, res) {
       const title = cleanText(rawTitle);
       const description = summarize50(rawDescription);
 
-      // ORIGINAL IMAGE LOGIC (No random fallback)
-      let image =
-        item.match(/<media:content.*?url="(.*?)"/)?.[1] ||
-        item.match(/<enclosure.*?url="(.*?)"/)?.[1] ||
-        extractImageFromDescription(rawDescription) ||
-        "";
+      const image = extractImageFromItem(item, rawDescription);
 
       if (!title || !link) continue;
 
