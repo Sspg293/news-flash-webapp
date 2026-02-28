@@ -1,108 +1,172 @@
 
-// FlashBrief Polished Hindi UI
 import React, { useEffect, useState, useRef } from "react";
 
 export default function App() {
-  const [news, setNews] = useState([]);
+  const [articles, setArticles] = useState([]);
   const [index, setIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [dark, setDark] = useState(false);
   const [category, setCategory] = useState("general");
+  const [language, setLanguage] = useState("hi");
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   const startX = useRef(0);
 
   useEffect(() => {
-    fetch(`/api/news?category=${category}&t=` + Date.now())
-      .then(res => res.json())
-      .then(data => {
-        setNews(data.articles || []);
-        setIndex(0);
-      });
+    fetchNews();
   }, [category]);
 
-  const next = () => index < news.length - 1 && setIndex(index + 1);
-  const prev = () => index > 0 && setIndex(index - 1);
+  useEffect(() => {
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    });
+  }, []);
 
-  const handleTouchStart = e => startX.current = e.touches[0].clientX;
-
-  const handleTouchEnd = e => {
-    const diff = startX.current - e.changedTouches[0].clientX;
-    if (diff > 80) next();
-    if (diff < -80) prev();
+  const fetchNews = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/news?category=${category}`);
+      const data = await res.json();
+      setArticles(data.articles || []);
+      setIndex(0);
+    } catch (err) {
+      console.log(err);
+    }
+    setLoading(false);
   };
 
-  if (!news.length) return <div style={{ padding: 20 }}>समाचार लोड हो रहे हैं...</div>;
+  const next = () => {
+    if (index < articles.length - 1) setIndex(index + 1);
+  };
 
-  const article = news[index];
+  const prev = () => {
+    if (index > 0) setIndex(index - 1);
+  };
+
+  const handleTouchStart = (e) => {
+    startX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e) => {
+    const diff = startX.current - e.changedTouches[0].clientX;
+    if (diff > 50) next();
+    if (diff < -50) prev();
+  };
+
+  const installApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      setDeferredPrompt(null);
+    }
+  };
+
+  const current = articles[index];
 
   return (
-    <div style={{
-      fontFamily: "system-ui",
-      background: "#f4f4f4",
-      minHeight: "100vh"
-    }}>
-
+    <div
+      style={{
+        background: dark ? "#111" : "#f2f2f2",
+        color: dark ? "#fff" : "#000",
+        minHeight: "100vh",
+        fontFamily: "sans-serif"
+      }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Header */}
       <div style={{
-        padding: "16px",
-        fontWeight: "bold",
-        fontSize: "22px",
-        background: "#fff",
-        boxShadow: "0 2px 6px rgba(0,0,0,0.08)"
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "15px 20px",
+        fontSize: 22,
+        fontWeight: "bold"
       }}>
-        ⚡ फ्लैशब्रीफ
+        ⚡ FlashBrief PRO
+        <div>
+          <button onClick={() => setDark(!dark)}>🌙</button>
+          <button onClick={() => setLanguage(language === "hi" ? "en" : "hi")}>🌐</button>
+        </div>
       </div>
 
-      {/* Swipe Area */}
-      <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-
-        {/* Image */}
-        <img
-          src={article.image}
-          alt=""
-          style={{
-            width: "100%",
-            height: "260px",
-            objectFit: "cover"
-          }}
-        />
-
-        {/* Card */}
-        <div style={{
-          background: "#fff",
-          marginTop: "-20px",
-          borderTopLeftRadius: "20px",
-          borderTopRightRadius: "20px",
-          padding: "20px"
-        }}>
-          <h2 style={{ lineHeight: "1.4" }}>
-            {article.title}
-          </h2>
-
-          <p style={{
-            marginTop: "12px",
-            lineHeight: "1.6",
-            fontSize: "16px",
-            color: "#444"
-          }}>
-            {article.description}
-          </p>
-
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noopener noreferrer"
+      {/* Category Menu */}
+      <div style={{ display: "flex", overflowX: "auto", padding: 10 }}>
+        {["general", "business", "technology", "sports", "science"].map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setCategory(cat)}
             style={{
-              display: "inline-block",
-              marginTop: "15px",
-              color: "#e53935",
-              fontWeight: "bold",
-              textDecoration: "none"
+              marginRight: 10,
+              padding: "6px 12px",
+              background: category === cat ? "#e63946" : "#ccc",
+              border: "none",
+              borderRadius: 20,
+              color: "#fff"
             }}
           >
-            पूरा लेख पढ़ें →
-          </a>
-        </div>
-
+            {cat}
+          </button>
+        ))}
       </div>
+
+      {/* Loader */}
+      {loading && (
+        <div style={{ padding: 30 }}>
+          <div style={{ height: 200, background: "#ddd", borderRadius: 10 }} />
+          <div style={{ height: 20, background: "#ccc", marginTop: 20 }} />
+          <div style={{ height: 20, background: "#ccc", marginTop: 10, width: "80%" }} />
+        </div>
+      )}
+
+      {/* Article */}
+      {!loading && current && (
+        <div style={{ padding: 20 }}>
+          {current.image && (
+            <img
+              src={current.image}
+              alt="news"
+              style={{ width: "100%", borderRadius: 12 }}
+            />
+          )}
+
+          <h2 style={{ marginTop: 20 }}>{current.title}</h2>
+          <p style={{ opacity: 0.8 }}>{current.description}</p>
+
+          <a
+            href={current.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "#e63946", fontWeight: "bold" }}
+          >
+            {language === "hi" ? "पूरा लेख पढ़ें →" : "Read Full Article →"}
+          </a>
+
+          <p style={{ marginTop: 20, fontSize: 12 }}>
+            👁 Viewed: {index + 1} / {articles.length}
+          </p>
+        </div>
+      )}
+
+      {/* Install Button */}
+      {deferredPrompt && (
+        <button
+          onClick={installApp}
+          style={{
+            position: "fixed",
+            bottom: 20,
+            right: 20,
+            padding: "10px 15px",
+            background: "#e63946",
+            color: "#fff",
+            border: "none",
+            borderRadius: 20
+          }}
+        >
+          Install App
+        </button>
+      )}
     </div>
   );
 }
