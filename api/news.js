@@ -1,5 +1,5 @@
 
-// FINAL Stable Hindi RSS Backend (Fast + No Scraping)
+// FINAL Hindi RSS Backend (Image Guaranteed Working)
 
 let cache = {};
 const CACHE_TIME = 5 * 60 * 1000;
@@ -21,6 +21,11 @@ function summarize50(text) {
   const words = clean.split(" ");
   if (words.length <= 50) return clean;
   return words.slice(0, 50).join(" ") + "...";
+}
+
+function extractImageFromDescription(description) {
+  const match = description.match(/<img.*?src="(.*?)"/i);
+  return match ? match[1] : "";
 }
 
 export default async function handler(req, res) {
@@ -58,10 +63,21 @@ export default async function handler(req, res) {
       const title = cleanText(rawTitle);
       const description = summarize50(rawDescription);
 
-      const image =
+      // 1️⃣ Try media image
+      let image =
         item.match(/<media:content.*?url="(.*?)"/)?.[1] ||
         item.match(/<enclosure.*?url="(.*?)"/)?.[1] ||
         "";
+
+      // 2️⃣ Try image inside description
+      if (!image) {
+        image = extractImageFromDescription(rawDescription);
+      }
+
+      // 3️⃣ Final fallback (always working random image)
+      if (!image) {
+        image = "https://picsum.photos/800/400?random=" + Math.floor(Math.random() * 10000);
+      }
 
       if (!title || !link) continue;
 
@@ -69,7 +85,7 @@ export default async function handler(req, res) {
         title,
         description,
         url: link.trim(),
-        image: image || "https://via.placeholder.com/800x400?text=FlashBrief"
+        image
       });
     }
 
