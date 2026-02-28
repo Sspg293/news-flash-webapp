@@ -1,5 +1,5 @@
 
-// FINAL Hindi Backend with Strong Image Extraction
+// FINAL Stable Hindi RSS Backend (Fast + No Scraping)
 
 let cache = {};
 const CACHE_TIME = 5 * 60 * 1000;
@@ -21,28 +21,6 @@ function summarize50(text) {
   const words = clean.split(" ");
   if (words.length <= 50) return clean;
   return words.slice(0, 50).join(" ") + "...";
-}
-
-async function extractArticleData(url) {
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0" }
-    });
-    const html = await res.text();
-
-    // Extract first paragraph
-    const paragraphMatch = html.match(/<p>(.*?)<\/p>/i);
-    const paragraph = paragraphMatch ? cleanText(paragraphMatch[1]) : "";
-
-    // Extract og:image
-    const ogImageMatch = html.match(/property="og:image" content="(.*?)"/i);
-    const ogImage = ogImageMatch ? ogImageMatch[1] : "";
-
-    return { paragraph, ogImage };
-
-  } catch {
-    return { paragraph: "", ogImage: "" };
-  }
 }
 
 export default async function handler(req, res) {
@@ -68,44 +46,38 @@ export default async function handler(req, res) {
   try {
     const response = await fetch(rssFeed);
     const xml = await response.text();
-    const items = xml.split("<item>").slice(1, 16);
+    const items = xml.split("<item>").slice(1, 21);
 
     let articles = [];
 
     for (let item of items) {
       let rawTitle = item.split("<title>")[1]?.split("</title>")[0] || "";
+      let rawDescription = item.split("<description>")[1]?.split("</description>")[0] || "";
+      let link = item.split("<link>")[1]?.split("</link>")[0];
+
       const title = cleanText(rawTitle);
+      const description = summarize50(rawDescription);
 
-      const link = item.split("<link>")[1]?.split("</link>")[0];
-
-      // Try RSS image first
-      let image =
+      const image =
         item.match(/<media:content.*?url="(.*?)"/)?.[1] ||
         item.match(/<enclosure.*?url="(.*?)"/)?.[1] ||
         "";
 
       if (!title || !link) continue;
 
-      const { paragraph, ogImage } = await extractArticleData(link);
-
-      if (!image && ogImage) {
-        image = ogImage;
-      }
-
-      const summary = summarize50(paragraph || title);
-
       articles.push({
         title,
-        description: summary,
+        description,
         url: link.trim(),
         image: image || "https://via.placeholder.com/800x400?text=FlashBrief"
       });
     }
 
     cache[category] = { data: articles, time: now };
+
     return res.status(200).json({ articles });
 
-  } catch {
+  } catch (error) {
     return res.status(500).json({ error: "समाचार लोड नहीं हो पाए" });
   }
 }
